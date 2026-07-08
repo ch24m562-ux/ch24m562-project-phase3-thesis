@@ -1,0 +1,545 @@
+\chapter{Problem Definition and Mathematical Formulation}
+\label{chap:problem}
+
+% ---------------------------------------------------------------
+\section{Chapter Overview and Notation}
+% ---------------------------------------------------------------
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{l>{\raggedright\arraybackslash}p{9.8cm}}
+\toprule
+\textbf{Symbol}                        & \textbf{Description} \\
+\midrule
+$t$                                    & Time index (hourly intervals) \\
+$\Delta t = 1$\,h                      & Time-step duration \\
+$P_t^{\PV}$                            & Solar PV generation (kW) \\
+$P_t^{\Load}$                          & Telecom load demand (kW) \\
+$G_t \in \{0,1\}$                      & Grid availability indicator \\
+$\SoC_t \in [0,1]$                     & Battery state-of-charge (normalised) \\
+$\Inv_t$                               & On-site diesel inventory (litres) \\
+$\Pipe_t$                              & Total diesel quantity in transit (litres); at most one
+                                         pending order at any time \\
+$P_t^{\Bat}$                           & Battery power (positive = charge, negative = discharge) (kW) \\
+$P_{\max}^{\ch},\; P_{\max}^{\dis}$    & Battery charge/discharge power limits (kW) \\
+$\DG_t \in \{0,1\}$                    & Diesel generator ON/OFF decision (1 = ON at fixed power) \\
+$P_{\mathrm{rated}}^{\DG}$             & DG fixed operating power when on (kW) \\
+$P_t^{\DG}$                            & DG electrical output $= \DG_t \cdot P_{\mathrm{rated}}^{\DG}$ \\
+$Q_t$                                  & Diesel order quantity (litres) \\
+$r_{\DG}$                              & DG fuel consumption rate (litres/kWh) \\
+$C^{\Tank}$                            & Tank capacity (litres) \\
+$E_{\Bat}$                             & Battery energy capacity (kWh) \\
+$\eta_{\ch},\; \eta_{\dis}$            & Charge/discharge efficiency \\
+$\hour_t$                              & Hour-of-day encoded as $(\sin(2\pi h/24),\cos(2\pi h/24))$ \\
+$L_t$                                  & Stochastic lead time (timesteps) for a placed diesel order \\
+$A_t$                                  & Diesel arrival quantity at time $t$ (litres) \\
+$\gamma$                               & Discount factor \\
+\midrule
+\multicolumn{2}{l}{\textit{Objective function coefficients}} \\
+\midrule
+$P_t^{\Grid}$                          & Grid power drawn at time $t$ (kW) \\
+$P_t^{\Grid,\max}$                     & Maximum grid connection capacity (kW) \\
+$c_{\Grid}$                            & Grid electricity cost coefficient (Rs./kWh) \\
+$c_{\mathrm{diesel}}$                  & Diesel fuel cost (Rs./litre) \\
+$c_{\order}$                           & Fixed administrative cost per order placed (Rs.) \\
+$c_{\hold}$                            & Inventory holding cost coefficient (Rs./litre/h) \\
+$c_{\degrad}$                          & Battery degradation cost coefficient (Rs./kWh throughput) \\
+$c_{\COtwo}$                           & Carbon cost coefficient (Rs./kg\,CO$_2$e) \\
+$\EF_{\mathrm{diesel}}$                & Diesel emission factor ($= 2.68$\,kg\,CO$_2$e/litre) \\
+$\lambda_{\short}$                     & Penalty coefficient for fuel-shortage events \\
+\bottomrule
+\end{tabular}
+\caption{Complete notation used in the mathematical formulation.}
+\label{tab:notation}
+\end{table}
+
+As established in Chapter~\ref{chap:literature} and summarised in
+Table~\ref{tab:litgap}, to the best of the author's knowledge no prior work
+jointly models diesel fuel as a finite stochastic inventory while
+simultaneously optimising operational energy dispatch in telecom towers.
+In rural deployments, diesel logistics---including pilferage, stockouts, and
+delivery disruptions---contribute significantly to tower outages
+\citep{datoms2024,alton2025,gsma2025b,trai2024}.
+
+This chapter addresses this gap by presenting a unified Constrained Markov
+Decision Process (CMDP) formulation that treats battery state-of-charge and
+diesel inventory as jointly controlled stochastic stocks under uncertainty.
+All decisions are taken at hourly resolution ($\Delta t = 1$\,h), consistent
+with the ITU/Zindi dataset used in this work (described in
+Chapter~\ref{chap:datasets-setup}).
+
+
+% ---------------------------------------------------------------
+\section{System Model}
+% ---------------------------------------------------------------
+
+The overall hybrid telecom tower and diesel-logistics system is illustrated in
+Figure~\ref{fig:system_diagram}.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.9\textwidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    node distance=2.6cm and 3.2cm,
+    box/.style={draw, rounded corners=4pt, minimum height=1.1cm,
+                minimum width=2.8cm, align=center, font=\small},
+    agent/.style={draw, fill=gray!12, rounded corners=6pt,
+                  minimum width=4.5cm, minimum height=1.4cm,
+                  align=center, font=\bfseries\small},
+    arrow/.style={->, thick},
+    obs/.style={->, dashed, thick, blue!70!black},
+    act/.style={->, dashed, thick, red!70!black}
+]
+
+% --- Energy components (top row) ---
+\node[box] (pv)   {Solar PV};
+\node[box, right=of pv]   (grid) {Grid Supply\\(intermittent)};
+\node[box, right=of grid] (bat)  {Battery Storage\\(LFP)};
+\node[box, right=of bat]  (dg)   {Diesel Generator\\(fixed $P_{\mathrm{rated}}^{\DG}$)};
+\node[box, right=of dg]   (load) {Telecom Load\\(BTS + ancillary)};
+
+% --- RL agent ---
+\node[agent, below=2.8cm of bat] (agent) {RL Agent};
+
+% --- Diesel logistics (bottom row) ---
+\node[box, below=5.0cm of dg] (tank) {Diesel Tank\\($\Inv_t$ litres)};
+\node[box, left=of tank]       (pipe) {Pipeline\\($\Pipe_t$)};
+\node[box, left=of pipe]       (sup)  {Fuel Supplier};
+
+% --- Physical flows ---
+\draw[arrow] (pv)   -- (bat);
+\draw[arrow] (grid) -- (bat);
+\draw[arrow] (bat)  -- (load);
+\draw[arrow] (dg)   -- (load);
+\draw[arrow] (sup)  -- node[above,font=\footnotesize] {$Q_t$ (order)} (pipe);
+\draw[arrow] (pipe) -- node[above,font=\footnotesize] {$A_t$ (arrival)} (tank);
+\draw[arrow] (tank) -- node[right,font=\footnotesize] {fuel} (dg);
+
+% --- Observations ---
+\draw[obs] (pv.south)   -- ++(0,-1.2) -| (agent.north west);
+\draw[obs] (grid.south) |- (agent.north);
+\draw[obs] (bat.south)  -- (agent.160);
+\draw[obs] (load.south) |- (agent.north east);
+\draw[obs] (pipe.north) -- ++(0,1.8) -| (agent.south west);
+
+\node[font=\footnotesize, above=7mm of agent, align=left]{
+  \textbf{State $s_t$:} PV output $P_t^{\PV}$, load $P_t^{\Load}$,\\
+  grid availability $G_t$, battery SoC,\\
+  diesel inventory $\Inv_t$, pipeline $\Pipe_t$,\\
+  time-of-day encoding $\hour_t$
+};
+
+% --- Actions ---
+\draw[act] (agent.60)  -- node[right,font=\footnotesize] {$\DG_t \in \{0,1\}$}    (dg.south);
+\draw[act] (agent.240) -- node[left,font=\footnotesize]  {$Q_t$}                   (sup.north);
+
+\end{tikzpicture}%
+}
+\caption{System architecture of the hybrid telecom tower under DG ON/OFF
+modelling. The RL agent observes energy states (PV, load, grid, battery SoC)
+and diesel logistics states (tank inventory $\Inv_t$ and in-transit pipeline
+$\Pipe_t$), and controls DG ON/OFF via
+$\DG_t \in \{0,1\}$ and diesel order quantity $Q_t$. Battery dispatch
+$P_t^{\Bat}$ is determined by an internal environment rule rather than a
+direct RL action.}
+\label{fig:system_diagram}
+\end{figure}
+
+The system comprises rooftop solar PV, a lithium iron phosphate (LFP) battery
+bank, intermittent grid supply, a diesel generator operating at fixed power
+$P_{\mathrm{rated}}^{\DG}$ when switched on, and a finite diesel tank
+replenished by external truck deliveries subject to stochastic lead times.
+$G_t \in \{0,1\}$ is a binary grid availability indicator; when $G_t = 0$ the
+grid is unavailable due to outage and no power can be drawn from it.
+Decisions are taken every hour ($\Delta t = 1$\,h). The key modelling
+assumptions are: perfect state observability within each timestep;
+non-cancellable diesel orders once placed; and a minimum DG up-time of 2\,h
+(2~steps at hourly resolution) whenever the generator is switched on.
+The present study focuses on single-tower energy management using the
+ITU/Zindi dataset (10 sites, hourly resolution, 60 days each); multi-tower
+coordination, site-specific hardware variation, and long-horizon logistics
+network optimisation are outside the scope of the current work.
+
+At each timestep, the power balance constraint must be satisfied:
+\begin{equation}
+P_t^{\Load} = P_t^{\PV} - P_t^{\Bat} + P_t^{\Grid} + \DG_t\,P_{\mathrm{rated}}^{\DG},
+\label{eq:balance}
+\end{equation}
+where $P_t^{\Grid} = G_t \cdot P_t^{\Grid,\max}$ is the grid power drawn, bounded
+by grid availability and the local connection capacity. The negative sign on
+$P_t^{\Bat}$ reflects the convention of Table~\ref{tab:notation}: a positive
+value denotes charging (power absorbed from the bus), so a discharging battery
+contributes positively to the supply side via the negative sign.
+
+Although diesel inventory decisions operate on multi-day timescales, they
+directly constrain hourly dispatch feasibility. During grid outages or
+low-solar periods, the generator can only operate if sufficient fuel remains
+on site. A controller that optimises hourly energy dispatch without accounting
+for inventory state may therefore select locally optimal actions that lead to
+infeasible states in subsequent hours. Jointly modelling inventory and dispatch
+decisions allows the agent to anticipate future fuel constraints and maintain
+service reliability under uncertain delivery schedules.
+
+The formulation therefore differs from conventional telecom energy-management
+models in two respects. First, diesel fuel is represented as a stochastic
+inventory subject to delivery delays rather than as an unconstrained fuel
+source. Second, dispatch and inventory decisions are optimised jointly within
+a single sequential decision framework, allowing the controller to anticipate
+future fuel availability when making present operational decisions.
+
+% ---------------------------------------------------------------
+\section{Motivation for Reinforcement Learning}
+\label{sec:rl_motivation}
+% ---------------------------------------------------------------
+
+Although the system dynamics can be written analytically, the resulting
+control problem becomes a stochastic mixed-integer dynamic program once diesel
+ordering, generator switching, and energy dispatch decisions are coupled across
+time. Solving such problems optimally requires accurate probabilistic models
+of solar generation, load variability, grid outages, and fuel delivery
+delays---all of which vary substantially across sites and seasons and are
+difficult to specify in closed form. Reinforcement learning provides an
+alternative approach by learning a policy directly from interaction with
+historical system trajectories, enabling the controller to adapt to stochastic
+conditions without repeatedly solving a large-scale optimisation problem at
+every timestep. Furthermore, once trained, the learned policy generalises
+across sites and operating scenarios, whereas a model-based optimisation must
+be re-solved from scratch for each new instance.
+
+% ---------------------------------------------------------------
+\section{State Space}
+\label{sec:state}
+% ---------------------------------------------------------------
+
+The state vector observed by the agent at each hourly step is
+\begin{equation}
+s_t = \bigl[\,
+  \SoC_t,\;
+  \Inv_t,\;
+  \Pipe_t,\;
+  P_t^{\PV},\;
+  P_t^{\Load},\;
+  G_t,\;
+  \hour_t
+\,\bigr],
+\label{eq:state}
+\end{equation}
+where $\hour_t = (\sin(2\pi h/24),\,\cos(2\pi h/24))$ encodes the hour of
+day as a two-dimensional cyclic feature.
+
+The observation consists of seven logical components, corresponding to nine
+scalar inputs after expansion of the cyclic hour-of-day encoding.
+Table~\ref{tab:state_sources} documents the data provenance of
+each component, a distinction the panel raised explicitly in Phase-I review.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Variable} & \textbf{Source} & \textbf{Notes} \\
+\midrule
+$P_t^{\PV}$   & ITU/Zindi dataset  & Direct column \\
+$P_t^{\Load}$ & ITU/Zindi dataset  & Direct column \\
+$G_t$         & ITU/Zindi dataset  & Direct column \\
+$\SoC_t$      & Simulator state    & Evolved via Eq.~\eqref{eq:soc} from real initial values \\
+$\Inv_t$      & Simulator state    & Derived from ITU fuel-level column and tank capacity \\
+$\Pipe_t$     & Synthetic          & Log-normal lead-time overlay; sole synthetic component \\
+$\hour_t$     & Derived            & Computed from ITU timestamp \\
+\bottomrule
+\end{tabular}
+\caption{Data provenance of each state variable. $\Pipe_t$ is the only
+component introduced synthetically through an explicit stochastic lead-time
+model; the remaining components are either obtained directly from the
+ITU/Zindi dataset or evolved from dataset-grounded initial conditions.}
+\label{tab:state_sources}
+\end{table}
+
+The pipeline quantity is capped at one pending order at any time: if a
+delivery is already in transit, the feasible action set restricts $Q_t = 0$
+until the pending order arrives (Section~\ref{sec:constraints}).
+
+% ---------------------------------------------------------------
+\section{Action Space}
+\label{sec:action}
+% ---------------------------------------------------------------
+
+At each hourly step the agent selects the control actions
+\begin{equation}
+a_t = \bigl[\,
+  \DG_t,\;
+  Q_t
+\,\bigr],
+\label{eq:action}
+\end{equation}
+with
+\[
+\DG_t \in \{0,1\}, \qquad
+Q_t \in \{0,\,500,\,1000,\,1500,\,2000\}\;\text{litres.}
+\]
+
+Here, $\DG_t$ controls generator commitment and $Q_t$ controls diesel
+replenishment. Battery dispatch $P_t^{\Bat}$ is determined by an
+internal environment rule that prioritises renewable and battery energy
+before diesel generation, rather than being a direct RL action.
+
+The five discrete order quantities reflect standard tanker delivery sizes used
+by Indian telecom operators, covering the practical range of replenishment
+volumes. The action space therefore consists of two discrete control
+decisions: generator commitment and diesel order quantity. Infeasible
+actions are excluded from the feasible set $\mathcal{C}(s_t)$ defined in
+Section~\ref{sec:cmdp}; the implementation of this feasible-set
+enforcement is described in Chapter~\ref{chap:methodology}.
+
+% ---------------------------------------------------------------
+\section{System Dynamics and Uncertainty}
+\label{sec:dynamics}
+% ---------------------------------------------------------------
+
+\paragraph{Battery dynamics.}
+Battery state-of-charge evolves according to
+\begin{equation}
+\SoC_{t+1} = \SoC_t
+  + \frac{\eta_{\ch}\,\max(P_t^{\Bat},0)\,\Delta t
+          - \max(-P_t^{\Bat},0)\,\Delta t\,/\,\eta_{\dis}}
+         {E_{\Bat}}.
+\label{eq:soc}
+\end{equation}
+
+\paragraph{Diesel inventory dynamics.}
+On-site fuel inventory evolves as
+\begin{equation}
+\Inv_{t+1} = \min\!\bigl(C^{\Tank},\;
+  \Inv_t - r_{\DG}\,P_t^{\DG}\,\Delta t + A_t\bigr),
+\label{eq:inv}
+\end{equation}
+where the arrival term is
+\begin{equation}
+A_t =
+\begin{cases}
+  Q_{t-L_t}, & \text{if a pending order's lead time expires at step } t, \\
+  0,          & \text{otherwise,}
+\end{cases}
+\label{eq:arrival}
+\end{equation}
+
+\paragraph{Pipeline dynamics.}
+The pipeline state $\Pipe_t$ represents the quantity of diesel currently in
+transit from a previously placed order. When the sampled lead time expires,
+the corresponding order quantity $Q_{t-L_t}$ is transferred to on-site
+inventory via the arrival term $A_t$ (Equation~\eqref{eq:arrival}); until
+that point $\Pipe_t = Q_{t-L_t}$ and no further orders may be placed. In
+the absence of a pending order, $\Pipe_t = 0$.
+
+\paragraph{Stochastic lead time.}
+Lead time in days is drawn from a log-normal distribution at the moment
+an order is placed:
+\begin{equation}
+L_t^{\text{days}} \;\sim\; \LogNormal(\mu,\,\sigma=0.6),
+\label{eq:leadtime}
+\end{equation}
+with $\mu = 2.5$\,days under the \emph{normal logistics} scenario and
+$\mu = 5.0$\,days under the \emph{delayed logistics} scenario. Both
+scenarios are evaluated in Chapter~\ref{chap:results} to test robustness
+under supply-chain disruption. The lead time in hourly timesteps is
+\begin{equation}
+L_t = \lceil 24\,L_t^{\text{days}} \rceil,
+\label{eq:leadtime_steps}
+\end{equation}
+consistent with $\Delta t = 1$\,h.
+
+The log-normal distribution for $L_t^{\text{days}}$ is standard in remote
+diesel logistics modelling \citep{srinivasan2013,shen2011}. Because actual
+delivery records are unavailable in the ITU/Zindi dataset, $\Pipe_t$ is the
+only state component generated synthetically; all other dynamics are driven
+directly by real sensor measurements.
+
+% ---------------------------------------------------------------
+\section{Constraints}
+\label{sec:constraints}
+% ---------------------------------------------------------------
+
+Three categories of hard constraint are enforced with zero tolerance in
+closed-loop operation.
+
+The \emph{battery constraints} require that state-of-charge remains within
+the safe operating window at all times, i.e.\ $0.20 \leq \SoC_{t+1} \leq 1.00$
+(corresponding to 80\% maximum depth-of-discharge for LFP cells), and that
+the charging and discharging power satisfies
+$-P_{\max}^{\dis} \leq P_t^{\Bat} \leq P_{\max}^{\ch}$. The feasible battery
+state transitions are obtained analytically from Equation~\eqref{eq:soc}
+and constrain the internal battery-dispatch rule at each step.
+
+The \emph{generator constraint} requires that the DG may only be switched on
+if sufficient fuel remains to sustain at least 2\,h of continuous operation
+at rated power, i.e.\ $\Inv_t \geq r_{\DG}\,P_{\mathrm{rated}}^{\DG}\cdot 2$.
+If this condition is not met, $\DG_t = 1$ is infeasible in that state.
+Additionally, once the generator is switched on it must remain on for a
+minimum of 2\,h (2~steps), reflecting realistic start-up costs and equipment
+limitations.
+
+The \emph{ordering constraint} prevents a new diesel order from being placed
+while a delivery is already in transit ($\Pipe_t > 0$), making any $Q_t > 0$
+infeasible in that state, and caps the maximum order quantity at remaining
+tank headroom, i.e.\ $Q_t \leq C^{\Tank} - \Inv_t$. Together, the three
+constraint categories define the feasible action set $\mathcal{C}(s_t)$
+incorporated into the CMDP tuple of Section~\ref{sec:cmdp}. Their
+implementation in the training algorithm is described in
+Chapter~\ref{chap:methodology}.
+
+% ---------------------------------------------------------------
+\section{Objective Function}
+\label{sec:objective}
+% ---------------------------------------------------------------
+
+The agent minimises the expected total discounted cost over an episode:
+\begin{align}
+J(\pi) = \mathbb{E}\Biggl[\,\sum_{t=0}^{T} \gamma^t \Bigl(
+    &\;c_{\Grid}\,P_t^{\Grid}
+     + c_{\mathrm{diesel}}\,r_{\DG}\,P_t^{\DG}\,\Delta t
+     + c_{\order}\,\mathbf{1}(Q_t > 0)
+     \notag \\[4pt]
+    &+ c_{\hold}\,\Inv_t
+     + c_{\degrad}\,|P_t^{\Bat}|
+     \notag \\[4pt]
+    &+ c_{\COtwo}\,\EF_{\mathrm{diesel}}\,r_{\DG}\,P_t^{\DG}\,\Delta t
+     \notag \\[4pt]
+    &+ \lambda_{\short}\,\max\!\bigl(0,\;
+       r_{\DG}\,P_t^{\DG}\,\Delta t - \Inv_t\bigr)
+\Bigr)\Biggr],
+\label{eq:objective}
+\end{align}
+where $\gamma = 0.995$ gives an effective planning horizon of approximately
+200\,h ($\approx 8$\,days), sufficient to cover realistic lead times.
+
+The cost terms are: $c_{\Grid}$, the grid electricity cost coefficient;
+$c_{\mathrm{diesel}}$, the diesel fuel cost in Rs./litre; $c_{\order}$, a
+fixed administrative cost per order placed; $c_{\hold}$, an inventory
+holding cost coefficient; $c_{\degrad}$, a battery degradation cost
+proportional to total charge throughput; $c_{\COtwo}$, a carbon cost
+coefficient (Rs.\ per kg CO$_2$e); $\EF_{\mathrm{diesel}} = 2.68$\,kg\,CO$_2$e/litre,
+the diesel emission factor; and $\lambda_{\short}$, a large penalty
+coefficient applied whenever the generator would consume more fuel than is
+available on-site. All cost coefficients are calibrated from published Indian telecom
+operator data \cite{IOCL_Prices2024, SERC_Tariff2024, Operator_Diesel2023}.
+
+The soft stockout penalty ($\lambda_{\short}$ term) discourages the policy
+from approaching the fuel-shortage boundary in states where the feasibility
+constraint cannot be applied analytically. In the constrained-site evaluation
+reported in Chapter~\ref{chap:results}, no hard violations were observed during
+policy rollout.
+
+Although the optimisation objective is expressed as discounted cumulative
+cost, policy performance is evaluated in Chapter~\ref{chap:results} using
+operational metrics including Expected Energy Not Served (EENS), diesel
+consumption, network uptime, and a cost proxy, which together reflect the
+trade-offs that matter to telecom tower operators.
+
+% ---------------------------------------------------------------
+\section{Formal CMDP Definition}
+\label{sec:cmdp}
+% ---------------------------------------------------------------
+
+The hybrid telecom energy-management problem is modelled as a discounted
+episodic Constrained Markov Decision Process defined by the tuple
+\[
+(\mathcal{S},\,\mathcal{A},\,\mathcal{P},\,c,\,\mathcal{C},\,\gamma),
+\]
+where $\mathcal{S} \subset \mathbb{R}^9$ is the state space defined in
+Section~\ref{sec:state}, $\mathcal{A}$ is the action space of
+Section~\ref{sec:action}, $\mathcal{P}$ captures the stochastic battery and
+inventory dynamics of Section~\ref{sec:dynamics}, $c$ is the cost function
+of Equation~\eqref{eq:objective}, and $\gamma = 0.995$. Operational
+constraints define a feasible action set $\mathcal{C}(s_t)$ for each state;
+how these feasibility requirements are enforced during policy learning is
+detailed in Chapter~\ref{chap:methodology}.
+
+Training episodes run for 720 steps (30 days), ensuring that the policy
+observes multiple fuel-delivery cycles and representative solar variability
+patterns. Evaluation episodes use the held-out 15-day test split of the
+ITU/Zindi dataset, providing an independent assessment of generalisation.
+
+% ---------------------------------------------------------------
+\section{Unified versus Hierarchical Decomposition}
+\label{sec:unified_vs_hier}
+% ---------------------------------------------------------------
+
+A natural modelling question is whether the diesel ordering decision
+($Q_t$, multi-day timescale) and the energy dispatch decisions (generator
+commitment and battery behaviour, hourly timescale) should be optimised
+jointly within a single agent or decomposed into separate controllers
+operating at their natural timescales. This question was raised explicitly
+in the Phase-I reviewer comments and is directly addressed by the
+experimental design of this work.
+
+The unified formulation presented in this chapter---in which a single
+joint agent controls diesel ordering and generator commitment while battery
+behaviour is handled by the environment---is referred to as \textbf{RLInv}
+throughout. The alternative \textbf{Track~B} architecture pairs a classical
+$(s,S)$ inventory policy for diesel ordering with a separate PPO agent for
+dispatch, allowing each sub-problem to be solved at its natural timescale.
+The two architectures are evaluated empirically in
+Chapter~\ref{chap:results}.
+
+The comparison between unified and hierarchical architectures allows the
+following hypotheses to be tested.
+
+\textbf{H1 (Coupling hypothesis).} Joint optimisation of diesel ordering and
+energy dispatch by a single agent provides measurable reliability or cost
+benefits relative to hierarchical decomposition. A reduction of at least 10\%
+in Expected Energy Not Served (EENS) is considered the threshold for
+operational significance.
+
+\textbf{H2 (Action masking hypothesis).} Incorporating feasibility-aware
+action masking during training improves learning stability and reduces
+the likelihood of infeasible exploratory actions relative to vanilla
+policy-gradient training without masking.
+
+\textbf{H3 (Inventory-state hypothesis).} Including explicit diesel inventory
+state in the observation improves ordering decisions, relative to an ablated
+agent in which the inventory-related state variables $\Inv_t$ and $\Pipe_t$
+are removed from the observation vector.
+
+These hypotheses are stated here, at the level of the problem formulation,
+because they directly shape the choice of state space, action space, and
+ablation variants. The formulation above is intentionally designed so that
+the role of inventory state, safety constraints, and joint optimisation can
+each be isolated and empirically tested through the comparisons defined above.
+Results for all three hypotheses are reported in Chapter~\ref{chap:results},
+and conclusions are drawn in Chapter~\ref{chap:conclusion} regardless of the
+direction of the findings.
+
+% ---------------------------------------------------------------
+\section{Research Objectives and Contributions}
+\label{sec:objectives}
+% ---------------------------------------------------------------
+
+The formulation presented in this chapter serves three related objectives:
+it enables joint dispatch and diesel-ordering control within a single
+sequential decision framework; it incorporates stochastic delivery-pipeline
+dynamics into the state representation, capturing replenishment uncertainty
+that existing energy-management formulations do not model; and it encodes
+hard operational feasibility requirements directly in the decision problem,
+rather than relying on penalty terms alone.
+
+The primary contribution of this chapter is the formulation of telecom tower
+energy management as a constrained sequential decision problem that jointly
+models diesel inventory logistics and energy dispatch. The chapter defines the
+unified state--action representation, the stochastic delivery-pipeline model,
+and the experimental hypothesis structure used to evaluate the formulation.
+The empirical evaluation of these hypotheses is presented in
+Chapter~\ref{chap:results}.
+
+\paragraph{Stakeholder impact.}
+Rural telecom infrastructure connects remote populations to emergency
+communications, mobile banking, and digital public services.  India operates
+several hundred thousand remote towers, many in weak-grid areas where diesel
+logistics account for 30--40\% of operational expenditure~\citep{gsma2025b,trai2024}.
+Tower outages in these settings directly interrupt critical services and
+disproportionately affect underserved communities.  Improving energy and
+inventory management at these sites therefore has direct implications for
+service reliability, operating cost, and carbon emissions.  The formulation
+presented in this chapter targets precisely these drivers by jointly
+optimising dispatch and replenishment decisions under realistic supply-chain
+uncertainty.

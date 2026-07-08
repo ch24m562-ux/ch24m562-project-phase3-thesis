@@ -1,0 +1,71 @@
+% ===============================================================
+%  Placeholder Figures and Tables for Compilation
+% ===============================================================
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\rule{0pt}{3in}\rule{0.9\linewidth}{0pt}}
+  \caption{Typical Hybrid Telecom Tower Setup (Grid–Solar–Battery–DG)}
+  \label{fig:tower-setup}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Summary of Energy Challenges in Telecom Towers}
+  \begin{tabular}{l l}
+  \toprule
+  Challenge & Description \\
+  \midrule
+  Grid unreliability & Frequent outages in rural sites \\
+  High diesel use & Increases OPEX and emissions \\
+  Battery degradation & Reduces backup reliability \\
+  \bottomrule
+  \end{tabular}
+  \label{tab:tower-challenges}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\rule{0pt}{3in}\rule{0.9\linewidth}{0pt}}
+  \caption{Proposed RL System Architecture for Tower Energy Management}
+  \label{fig:system-architecture}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Hyper-parameters Used for RL Agent Training}
+  \begin{tabular}{l c}
+  \toprule
+  Parameter & Value \\
+  \midrule
+  Learning rate & $1\times10^{-4}$ \\
+  Discount factor $\gamma$ & 0.99 \\
+  Batch size & 64 \\
+  Replay buffer & $1\times10^{5}$ \\
+  \bottomrule
+  \end{tabular}
+  \label{tab:hyperparameters}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\rule{0pt}{3in}\rule{0.9\linewidth}{0pt}}
+  \caption{Training Convergence Curve: Mean Reward vs Episode}
+  \label{fig:reward-curve}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Performance Comparison of Control Strategies}
+  \begin{tabular}{l c c c}
+  \toprule
+  Metric & Rule-based & Optimization & RL Agent \\
+  \midrule
+  OPEX Reduction (\%) & – & 8.2 & 18.9 \\
+  Fuel Savings (\%) & – & 11.0 & 27.3 \\
+  CO$_2$ Reduction (\%) & – & 12.4 & 25.6 \\
+  Reliability (\%) & 94.1 & 96.8 & 99.2 \\
+  \bottomrule
+  \end{tabular}
+  \label{tab:performance-comparison}
+\end{table}

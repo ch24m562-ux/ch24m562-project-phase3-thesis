@@ -1,0 +1,76 @@
+% filename: appn-gantt.tex
+% Reflects actual thesis timeline:
+%   Phase I (Oct–Dec 2025): formulation, CMDP, simulator design → submitted Dec 2025
+%   Phase II (Jan–Mar 2026): implementation, training, evaluation, writing → submitted Mar 11 2026
+% ============================================================
+
+\label{app:gantt}
+
+This appendix summarises the execution timeline of the thesis across two
+phases. Phase~I (October--December~2025) covered problem formulation,
+literature review, CMDP design, and simulator blueprint, culminating in
+the Phase~I submission in December~2025. Phase~II (January--March~2026)
+covered full implementation, reinforcement learning training, ablation
+study, results analysis, and thesis writing, culminating in submission on
+11~March~2026.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{ganttchart}[
+    hgrid,
+    vgrid={*{3}{draw=none}, dotted},
+    time slot format=isodate,
+    time slot unit=day,
+    x unit=0.036cm,
+    y unit title=0.6cm,
+    y unit chart=0.55cm,
+    title height=1,
+    title label font=\scriptsize\bfseries,
+    bar label font=\scriptsize,
+    bar label node/.append style={align=left, text width=4.2cm},
+    group label font=\scriptsize\bfseries,
+    group label node/.append style={align=left, text width=4.2cm},
+    bar/.append style={fill=blue!40, rounded corners=1pt},
+    group/.append style={fill=black!70},
+    milestone/.append style={fill=red!70, shape=diamond},
+    today=2026-03-11,
+    today rule/.style={draw=red!80, line width=1pt, dashed},
+    today label=\scriptsize Submission,
+    canvas/.append style={draw=black!20}
+]{2025-10-01}{2026-03-15}
+
+% ── Month labels ──────────────────────────────────────────
+\gantttitle{Oct}{31}
+\gantttitle{Nov}{30}
+\gantttitle{Dec}{31}
+\gantttitle{Jan}{31}
+\gantttitle{Feb}{28}
+\gantttitle{Mar}{15} \\
+
+% ── PHASE I ──────────────────────────────────────────────
+\ganttgroup{Phase I: Formulation \& Design}{2025-10-01}{2025-12-31} \\
+\ganttbar{Literature review}{2025-10-01}{2025-11-15} \\
+\ganttbar{CMDP problem formulation}{2025-10-15}{2025-11-30} \\
+\ganttbar{Simulator blueprint \& dataset plan}{2025-11-01}{2025-12-20} \\
+\ganttbar{Phase~I thesis writing}{2025-12-01}{2025-12-31} \\
+\ganttmilestone{Phase~I submitted}{2025-12-31} \\[grid]
+
+% ── PHASE II ─────────────────────────────────────────────
+\ganttgroup{Phase II: Implementation \& Evaluation}{2026-01-01}{2026-03-11} \\
+\ganttbar{ITU/Zindi dataset acquisition \& EDA}{2026-01-01}{2026-01-20} \\
+\ganttbar{TelecomEnv simulator development}{2026-01-15}{2026-02-05} \\
+\ganttbar{RLInv \texttt{MaskablePPO} training}{2026-02-01}{2026-02-20} \\
+\ganttbar{TrackB + ablation study}{2026-02-15}{2026-02-27} \\
+\ganttbar{Results analysis \& figures}{2026-02-25}{2026-03-05} \\
+\ganttbar{Thesis writing \& revision}{2026-02-28}{2026-03-11} \\
+\ganttmilestone{Phase~II submitted}{2026-03-11}
+
+\end{ganttchart}%
+}
+\caption{Thesis execution timeline across Phase~I (October--December~2025)
+and Phase~II (January--March~2026). Phase~I covered problem formulation
+and CMDP design; Phase~II covered full implementation, training, and
+evaluation. The red dashed line marks the submission date (11~March~2026).}
+\label{fig:gantt}
+\end{figure}

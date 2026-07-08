@@ -1,0 +1,168 @@
+%% thesis.tex – IITM 2022 template (M.Tech, Industrial AI)
+\documentclass[mtech,smplmath]{iitmdissertation}
+\usepackage{float}
+\PassOptionsToPackage{hyphens}{url} % BEFORE hyperref
+\usepackage[hidelinks]{hyperref}
+\usepackage{doi}
+\usepackage{xurl}     % extends URL breaking
+\urlstyle{same}
+\AtBeginDocument{%
+  \pdfstringdefDisableCommands{%
+    \let\MakeUppercase\relax
+  }%
+}
+\usepackage{textcomp}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{cleveref}  % Optional: \Cref{sec:foo}
+\usepackage{array} % you already seem to use this for >{\raggedright\arraybackslash}
+\usepackage{caption}    % for \captionof outside floats (not needed here, but good to have)
+\usepackage{placeins}
+\usepackage{scrhack}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{fit,positioning}
+\usetikzlibrary{arrows.meta, positioning, calc, shapes.geometric, bending}
+\usetikzlibrary{decorations.pathmorphing}
+
+
+\tikzset{
+  block/.style={
+    draw,
+    rectangle,
+    rounded corners,
+    minimum height=1.0cm,
+    minimum width=3.4cm,
+    align=center,
+    font=\small
+  },
+  smallblock/.style={
+    draw,
+    rectangle,
+    rounded corners,
+    minimum height=0.9cm,
+    minimum width=3.6cm,
+    align=center,
+    font=\footnotesize
+  },
+  arrow/.style={
+    -{Latex[length=3mm,width=2mm]},thick}
+}
+\usepackage{siunitx}
+%\usepackage{wasysym}  % for \rupee
+
+% ==============================================================================
+% CUSTOM MATH OPERATORS & SYMBOLS FOR THE ENTIRE THESIS
+% ==============================================================================
+\usepackage{tabularx}
+\usepackage{amsmath,amssymb}   % already loaded – needed for \DeclareMathOperator etc.
+\usepackage{booktabs}         % for nice tables (already used)
+
+% ----------------------- Physical state variables -----------------------
+\newcommand{\SoC}{\mathrm{SoC}}          % State-of-Charge (normalised 0–1)
+\newcommand{\Inv}{\mathrm{Inv}}           % On-site diesel inventory (litres)
+\newcommand{\Pipe}{\mathrm{Pipe}}         % In-transit diesel pipeline state
+
+% ----------------------- Energy system components -----------------------
+\newcommand{\PV}{\mathrm{PV}}             % Solar photovoltaic generation
+\newcommand{\Load}{\mathrm{Load}}         % Telecom site load demand
+\newcommand{\Bat}{\mathrm{Bat}}           % Battery storage system
+\newcommand{\DG}{\mathrm{DG}}             % Diesel generator
+\newcommand{\Grid}{\mathrm{Grid}}         % Electricity grid (intermittent)
+\newcommand{\Tank}{\mathrm{Tank}}         % Diesel storage tank
+
+% ----------------------- Subscripts for charge/discharge -----------------------
+\newcommand{\ch}{\mathrm{ch}}             % charging
+\newcommand{\dis}{\mathrm{dis}}           % discharging
+
+% ----------------------- Time/context features -----------------------
+\providecommand{\hour}{h}                    % hour-of-day index or feature
+\newcommand{\daytype}{d}                  % day-type (weekday / weekend / holiday)
+
+% ----------------------- Distributions -----------------------
+\newcommand{\LogNormal}{\mathrm{LogNormal}}     % Log-normal distribution (for lead times)
+
+% ----------------------- Cost and penalty coefficients -----------------------
+\newcommand{\COtwo}{\mathrm{CO_2}}        % Carbon dioxide (with proper subscript)
+\newcommand{\EF}{\mathrm{EF}}             % Emission factor (kg CO₂e / litre)
+\newcommand{\hold}{\mathrm{hold}}         % Inventory holding cost coefficient
+\newcommand{\order}{\mathrm{order}}       % Fixed cost per diesel order (truck dispatch)
+\newcommand{\degrad}{\mathrm{degrad}}     % Battery degradation cost coefficient (avoids clash with built-in \deg)
+\newcommand{\short}{\mathrm{short}}       % Very high penalty for fuel shortage / stockout
+
+% ----------------------- Optional nice-to-have (uncomment if you use them) -------
+% \newcommand{\leadtime}{L}               % Lead time in days or timesteps
+% \newcommand{\arrival}{A}                 % Diesel arrival at time t
+% \newcommand{\uptime}{\mathrm{up}}       % DG minimum up-time constraint
+
+\newcommand{\diesel}{\mathrm{diesel}}     % add this line
+\newcommand{\lambdashort}{\lambda_{\short}} % optional, cleaner
+\newcommand{\Net}{\mathrm{Net}}       % net load
+\newcommand{\rated}{\mathrm{rated}}   % rated power
+%% ------------------- METADATA -------------------
+\dissertationDepartment      {Department of Chemical Engineering}
+\dissertationAuthorName      {Sangeeta Gupta}
+\dissertationDateOfBirth     {01 January 1998}
+\dissertationDegree          {Master of Technology in Industrial Artificial Intelligence}
+\dissertationTitle           {Energy-Aware Telecom Tower Management via Inventory-Inspired Reinforcement Learning}
+\dissertationMonth           {March}
+\dissertationYear            {2026}
+\dissertationCertificateDate {March 2026}
+\dissertationType            {Thesis}
+\dissertationGuides          {Prof. }
+\dissertationCommitteeName   {Doctoral Committee}
+\dissertationImage           {}
+
+% Rupee macro to avoid Unicode ₹ issues
+\newcommand{\rupee}{\text{Rs.\,}}
+
+% Glossary / abbreviations / notation setup
+\setupGlossaryAbbreviationsDefinitions
+\usepackage[most]{tcolorbox}
+\usepackage{pgfgantt}
+\hyphenation{Sub-proc-Vec-En-v}
+\AtBeginDocument{\mathcode`\,="602C}  % allows line break after comma in math
+\begin{document}
+
+  % ============== PRE-MATTER (covers + certificate) ==============
+  \prematter
+  \printCertificate
+
+  % ============== FRONT MATTER (ack, abstract, TOC, etc.) =========
+  \begin{FrontMatter}
+    \printGlossaryAndAbbreviations
+    %\printNotation
+    %\input{1-frontmatter/front-figures-tables}
+  \end{FrontMatter}
+
+  % ============== MAIN MATTER (chapters + appendices) =============
+  \begin{MainMatter}
+    \input{2-mainmatter/chapters/chap-introduction}
+    \input{2-mainmatter/chapters/chap-literature}
+    \input{2-mainmatter/chapters/chap-problem-formulation}
+    \input{2-mainmatter/chapters/chap-methodology}    
+    \input{2-mainmatter/chapters/chap-datasets-setup}
+    \input{2-mainmatter/chapters/chap-experimental-execution}   
+    \input{2-mainmatter/chapters/chap-results}
+    \input{2-mainmatter/chapters/chap-conclusion}
+
+    \appendix
+    \chapter{Thesis Execution Timeline}
+    \input{2-mainmatter/appendices/appn-gantt}
+    \chapter{Per-Site Enhanced Stress Analyses}
+    \label{app:site_profiles}
+    \input{2-mainmatter/appendices/appendix_site_profiles}
+  \end{MainMatter}
+
+  % ============== BACK MATTER (references etc.) ===================
+  \begin{BackMatter}
+    \printBibliographyReferences{references}
+    % \printCV
+    % \printCommittee
+  \end{BackMatter}
+
+\end{document}
+

@@ -1,0 +1,437 @@
+% filename: chap-literature-v2.tex
+% Changes from v1 (Phase-I):
+%   - Opening thesis-positioning sentence: softened "jointly optimizes" and "controller"
+%   - Battery ageing section closing sentence: removed multi-agent + battery ageing combination claim
+%   - Gap table: This thesis row corrected — multi-agent ×, battery degradation partial
+%   - Core Novelty bullets: rewritten to match actual Phase-II implementation
+%   - Chapter 2 conclusion: softened "first comprehensive CMDP"
+%   - Literature body (paper summaries, microgrid gap, HOMER, PMU): UNCHANGED
+% ============================================================
+
+\chapter{Literature Review}
+\label{chap:literature}
+
+\section{Overview of the Literature Review}
+
+The rapid expansion of rural and off-grid telecom networks has established hybrid power systems—consisting of solar PV, battery storage, diesel generators (DG), and unreliable grid supply—as the default architecture for base transceiver station (BTS) power provisioning. Operating these systems amidst stochastic renewable generation, variable traffic loads, frequent grid outages, and highly uncertain diesel delivery poses a severe operational and economic challenge.
+
+Reinforcement Learning (RL) has emerged as the leading paradigm for adaptive control under uncertainty. However, existing telecom-specific RL applications do \textbf{not} incorporate fuel logistics, delivery uncertainty, or inventory depletion risk.
+
+This chapter synthesizes more than 35 high-impact works published between 2013 and 2025 across \textbf{four interconnected domains}:
+
+\begin{enumerate}
+    \item RL for telecom tower and base station energy management
+    \item RL for microgrid and hybrid energy scheduling
+    \item Inventory and replenishment theory in fuel and energy logistics
+    \item Battery ageing, safety constraints, and stochastic operation
+\end{enumerate}
+
+The synthesis reveals a persistent and decisive gap:
+
+\begin{quote}
+\textbf{To the best of the author's knowledge, no prior work models diesel fuel
+at telecom towers as a finite, replenishable inventory with stochastic delivery
+delays, holding/shortage costs, and telecom-specific QoS-linked outage penalties.}
+\end{quote}
+
+% ── REVISED: softened from "jointly optimizes energy dispatch and diesel
+%    replenishment decisions" and from "controller" to "framework" ──────────
+This thesis addresses this gap through an \textbf{inventory-inspired reinforcement
+learning framework} for hybrid telecom-tower energy management, in which diesel
+is modelled explicitly as a finite replenishable resource alongside battery and
+renewable-energy states. The proposed formulation is designed to support joint
+reasoning over energy dispatch and diesel replenishment under stochastic delivery
+and outage uncertainty.
+
+\section{Reinforcement Learning for Telecom Tower Energy Management}
+\label{sec:rl-telecom-tower}
+
+Recent reinforcement learning research targeted specifically at telecom-tower and base station energy management has demonstrated impressive gains in renewable utilisation and OPEX reduction \cite{ma_pan_2025_telecom_ies, yan_2025_safe_marl_bs, alhajhassan_2024_battery_ageing_rl, deng_2025_5g_microgrid_ka, qi_2025_battery_swapping_inventory, cho_2025_solar_smallcell_ddqn}.
+Across these six advanced works (2024--2025), RL controllers achieve:
+
+\begin{itemize}
+    \item \textbf{18--42\% reduction in energy cost} vs. rule-based/MPC baselines (Ma \& Pan 2025; Yan 2025)
+    \item \textbf{15--35\% diesel consumption reduction} in hybrid scenarios (Al Haj Hassan 2024; Cho 2025)
+    \item \textbf{20--30\% improvement in renewable utilization} (Deng 2025)
+\end{itemize}
+
+These quantified gains validate the potential of RL for telecom energy management; however, a critical modelling gap persists: \emph{none} incorporate diesel inventory dynamics, replenishment uncertainty, or stockout risk.
+
+
+These limitations motivate modelling diesel as a stochastic inventory process and formulating telecom-tower energy management as a Constrained Markov Decision Process (CMDP).
+
+\subsubsection{Ma \& Pan (2025)}
+\label{sec:ma-pan}
+\textit{Smart Energy Supply Scheduling for Green Remote Telecom with Data-Driven Deep Reinforcement Learning} \cite{ma_pan_2025_telecom_ies}.
+
+\textbf{Venue:} \textit{Sustainable Energy, Grids and Networks}, vol.~44, 101974 (2025). DOI: 10.1016/j.segan.2025.101974.
+
+\textbf{System modelled:} Hybrid energy system for remote telecom base stations comprising solar PV, lithium-ion battery storage, diesel generator, and intermittently available grid electricity (Fig.~1; Sec.~3.1). Empirical validation uses real-world operational data from ten remote base stations provided by the ITU 2024 Smart Energy Scheduling Challenge (Sec.~4.1; 10 sites, 60 days, hourly resolution).
+
+\textbf{Method:} Data-driven Proximal Policy Optimisation (PPO) with a state representation that embeds multi-horizon forecasts of load and PV generation. These forecasts are produced by an ensemble of three deep time-series models—NHITS, TCN, and PatchTST—combined via simple averaging (Sec.~3.4; Tabs.~4--5). PPO is trained using a vectorised empirical-risk-minimisation environment that simulates the hybrid system directly from historical trajectories (Algorithm~1; Sec.~3.3).
+
+\textbf{Key results:} On the ITU test set, PPO achieves an average operating cost of 134.05 versus 253.42 for rule-based control and 210.43 for MPC with imperfect forecasts, corresponding to a 36--47\,\% reduction depending on the baseline (Table~8). It also substantially reduces diesel generator runtime (91.4~h~$\rightarrow$~40.8~h) and start-ups (11.3~$\rightarrow$~8), while better utilising available grid power and renewables (Table~8; Figs.~10--12).
+
+\textbf{Relevance and limitations for this thesis:}
+\begin{itemize}
+    \item Most directly comparable prior work on RL-based hybrid energy scheduling for remote telecom sites; serves as the primary benchmark for this thesis.
+    \item Demonstrates the effectiveness of embedding rolling deep forecasts (NHITS--TCN--PatchTST ensemble) into the RL state to manage dual uncertainty in load and solar generation.
+    \item \textbf{Critical gap:} The diesel generator is treated as an \emph{always-available, fuel-unconstrained} power source—there is no fuel inventory state, replenishment action, delivery lead time, or stockout risk (absence confirmed in Sec.~3.1--3.2).
+    \item Battery degradation, cycle ageing, and replacement costs are not modelled; only SOC bounds and a simple depth-of-discharge constraint are enforced (Sec.~3.1).
+    \item Wind power is mentioned conceptually in the introduction, but the implemented model and experiments are strictly solar-only (Fig.~1; Sec.~3.1).
+    \item The dataset, while real and multi-site, spans only 60 days per site and does not capture seasonal patterns or extended multi-week outages, limiting insights into long-horizon logistics constraints typical of rural Indian telecom sites.
+\end{itemize}
+
+\subsubsection{Yan et al. (2025)}
+\label{sec:yan-et-al}
+\textit{Trade-Off Between Renewable Energy Utilizing and Communication Quality for Base Stations: A Heterogeneous Multi-Agent Safe RL Method} \cite{yan_2025_safe_marl_bs}.
+
+\textbf{Venue:} \textit{IEEE Transactions on Green Communications and Networking}, vol.~9, no.~1, pp.~83--93 (2025). DOI: 10.1109/TGCN.2024.3415034.
+
+\textbf{System modelled:} An electric--cellular collaborative network (ECCN) integrating a distribution grid, distributed photovoltaic (PV) resources, and ultra-dense cellular clusters (100 BSs per cluster at five nodes of a modified IEEE 33-bus feeder). The electric network enforces voltage, current, and branch-flow safety constraints, while the cellular subsystem models user density, traffic demand, and BS sleep/active probabilities. Experiments use dynamically varying simulated PV generation, electrical loads, and traffic patterns over a 168-hour (7-day) horizon.
+
+\textbf{Method:} A heterogeneous multi-agent safe RL (HMAS-RL) framework cast as a multi-agent constrained MDP (MA-CMDP). Two cooperative agents act simultaneously: (i) a communication-network (CN) agent controlling BS sleep probabilities $\rho_{i,t}$, and (ii) an electric-network (EN) agent dispatching renewable generation $P^{\mathrm{res}}_{i,t}$. Both share joint observations and a team reward under centralized training with decentralized execution. Safety is enforced using a Primal--Dual Deep Deterministic Policy Gradient (PD-DDPG) mechanism, where a reward critic optimises energy/QoS objectives, a cost critic tracks EN safety-constraint violations, and a dual variable $\upsilon$ dynamically balances reward and constraint satisfaction.
+
+\textbf{Key results:} HMAS-RL outperforms independent and unconstrained RL baselines across both EN and CN metrics. Relative to ``Independent RL,'' it reduces EN power-supply cost by 6.93\% and discarded PV energy by 14.55\%, while maintaining safety-constraint violations within a tight tolerance ($d = 0.01$). On the communication side, it lowers BS power consumption by 23.45\% and reduces the failed downlink transmission probability by 1.69\%. Adjusting the QoS coefficient $c_f$ yields a controllable trade-off between EN cost and CN reliability.
+
+\textbf{Relevance and limitations for this thesis:}
+\begin{itemize}
+    \item Provides a strong methodological precedent for \emph{safe multi-agent RL} in power--communication co-optimisation (MA-CMDP, cost critic, primal--dual updates), conceptually relevant to our constrained RL formulation.
+    \item Demonstrates the benefit of heterogeneous agents with centralized training / decentralized execution, highlighting the importance of coordinating multiple subsystems (communication and power).
+    \item \textbf{Critical gap:} The model contains \emph{no diesel generators, no batteries, and no fuel logistics}. Energy supply is limited to PV and grid; there is \textbf{no fuel inventory state, no replenishment decision, no delivery lead time}, and \textbf{no stockout or blackout risk}. This differs fundamentally from hybrid telecom tower sites that rely on DG + battery + solar under stochastic outages.
+    \item No modelling of battery storage, degradation, or energy shifting; RES curtailment is the main flexibility lever.
+    \item Although wind is mentioned conceptually (Sec.~I), all experiments are strictly solar-only; the dataset is purely simulated and lacks multi-site diversity, seasonality, or logistics-related uncertainty typical of rural telecom deployments.
+    \item Operates on a stylised IEEE test feeder rather than real telecom power architectures, and optimises QoS metrics (failed DL probability) rather than tower uptime or energy autonomy under supply-chain constraints.
+\end{itemize}
+
+\subsubsection{Al Haj Hassan et al. (2024)}
+\label{sec:al-haj-hassan-et-al}
+\textit{Reinforcement Learning for Radio Resource Management of Hybrid Energy Cellular Networks with Battery Constraints} \cite{alhajhassan_2024_battery_ageing_rl}.
+
+\textbf{Venue:} \textit{Computer Communications}, vol.~213, pp.~135--146 (2024). DOI: 10.1016/j.comcom.2023.10.025.
+
+\textbf{System modelled:} A single macro base station (1200~m coverage radius; 1350~W peak demand; up to 50 resource blocks) powered by solar photovoltaic generation (hourly profile), a battery storage unit (2000--4000~Wh; 90\% efficiency), and the Smart Grid with time-varying prices. The BS serves heterogeneous user classes (hard/soft/best-effort) with sigmoid-type utility functions. The simulation environment incorporates urban path-loss and traffic profiles over daily and yearly horizons. Battery operation enforces SoC bounds (20--90\%) and depth-of-discharge limits to mitigate degradation (Eqs.~10--11).
+
+\textbf{Method:} A discrete Q-learning approach (Algorithm~1) formulated as a Markov decision process in which the action selects the number of active radio resource blocks (0--50). The state space includes discretised battery level, grid price, and traffic load. The reward combines weighted energy-cost minimisation and average user utility, with an optional penalty when battery-aging constraints are violated. Two operating modes are evaluated: unconstrained (no battery degradation protection) and constrained (strict SoC/DoD limits). Training uses $\epsilon$-greedy exploration until convergence, followed by online deployment.
+
+\textbf{Key results:} With $\eta = 0.7$ and a 4000~Wh battery, constrained Q-learning achieves an 82\% average energy-cost metric and 0.79 user utility, compared to 85\% and 0.82 for the unconstrained policy (Table~4), outperforming heuristic baselines (greedy, traffic-aware, RE-aware, and price-aware). Battery constraints increase short-term renewable-energy curtailment (by approximately 22 percentage points) but substantially extend battery lifetime; over a 1-year simulation, the constrained controller yields superior long-term cost--QoS performance (Figs.~17--18). Larger batteries reduce the short-term impact of degradation constraints.
+
+\textbf{Relevance and limitations for this thesis:}
+\begin{itemize}
+    \item Provides a useful precedent for incorporating \emph{battery degradation constraints (SoC and DoD limits)} into reinforcement learning, complementing this thesis's explicit modelling of ageing and depth-of-discharge.
+    \item Illustrates how RL can coordinate \emph{energy state} (renewables, battery, grid price) with \emph{QoS-driven radio decisions}, supporting multi-objective reward design in telecom energy management.
+    \item \textbf{Critical gap:} The system includes \emph{no diesel generator and no fuel logistics}. Energy supply is limited to solar and the grid; the environment contains no fuel inventory state, replenishment decisions, delivery lead times, or any stockout/forced-downtime risk.
+    \item Battery ageing is represented only via hard constraints, not through explicit cycle/calendar degradation modelling; RL actions adjust radio resources rather than hybrid DG/battery/solar dispatch.
+    \item Grid availability is continuous with no outages, and the study focuses on a single BS with synthetic traces---it does not model seasonal dynamics, multi-site variation, or long-horizon supply-chain disruptions typical of rural telecom towers.
+\end{itemize}
+
+\subsubsection{Deng et al. (2025)}
+\label{sec:deng-et-al}
+\textit{Optimal Microgrid Dispatch with 5G Communication Base Stations: A Knowledge-Assist Deep Reinforcement Learning Method} \cite{deng_2025_5g_microgrid_ka}.
+
+\textbf{Venue:} \textit{Electric Power Systems Research}, vol.~248, 111982 (2025). DOI: 10.1016/j.epsr.2025.111982.
+
+\textbf{System modelled:} A low-voltage AC microgrid supplying multiple 5G communication base stations (5G-CBSs) through a common bus. The system comprises photovoltaic (PV) arrays, wind turbines (WTs), a battery energy storage system (BESS), and a bidirectional grid connection (Fig.~1; Sec.~2). The model captures dynamic 5G-CBS load profiles, renewable generation uncertainty, time-of-use grid pricing, and a degradation cost for BESS cycling (Eqs.~23--25). Each 5G-CBS includes an uninterruptible power supply (UPS) for very short-term backup, but UPS capacity is fixed and not part of the dispatch or RL action space (Sec.~2.2).
+
+\textbf{Method:} The dispatch optimisation problem is formulated as a partially observable Markov decision process (POMDP; Eqs.~26--32) and solved using an Actor--Critic (AC) deep reinforcement learning framework augmented with a \emph{knowledge-assist} module (Algorithm~1; Sec.~3). The knowledge module monitors critic-network approximation error and injects domain-informed corrections into the TD-error and actor-gradient updates, substantially improving convergence stability under non-stationary renewable and load dynamics (Fig.~2). The RL agent outputs BESS charge/discharge power, PV/WT curtailment levels, and grid import/export quantities at each time step.
+
+\textbf{Key results:} Across multiple week-long test cases (Figs.~3--7), the knowledge-assist AC consistently outperforms vanilla AC. Cumulative reward improves by up to 9.76\% (Table~3), with markedly smoother convergence, reduced oscillation, and more stable BESS cycling. The method also yields lower operating cost and carbon emissions compared with both traditional AC and deterministic baselines, while satisfying 5G-CBS load requirements with near-zero violation across all cases (Sec.~4).
+
+\textbf{Relevance and limitations for this thesis:}
+\begin{itemize}
+    \item Provides a strong methodological precedent for enhancing Actor--Critic RL with domain-knowledge corrections to stabilise training under high renewable and telecom-load variability—relevant for constrained RL in hybrid telecom energy systems.
+    \item Integrates 5G-CBS load characteristics directly into microgrid dispatch, highlighting the importance of coupling communication demand with energy scheduling decisions.
+    \item \textbf{Critical gap:} The system includes \emph{no diesel generator and no fuel logistics}. Energy supply is limited to PV, wind, BESS, and grid; there is \textbf{no fuel inventory state, replenishment decision, delivery lead time}, and \textbf{no stockout or blackout risk} (absent from Secs.~2--3).
+    \item Battery degradation is represented only via a cost term (Eqs.~23--25), without detailed cycle/calendar ageing models or operational safety constraints (e.g., minimum DoD reserve).
+    \item Assumes continuous grid availability and uses synthetic 5G-CBS load traces; does not model extended grid outages, multi-site heterogeneity, seasonal patterns, or logistics disruptions typical of rural/off-grid telecom tower deployments.
+\end{itemize}
+
+\subsubsection{Qi et al. (2025)}
+\label{sec:qi-et-al}
+\textit{An Optimal Dispatch Strategy for 5G Base Stations Equipped with Battery Swapping Cabinets} \cite{qi_2025_battery_swapping_inventory}.
+
+\textbf{Venue:} \textit{Applied Energy}, vol.~392, 125914 (2025). DOI: 10.1016/j.apenergy.2025.125914.
+
+\textbf{System modelled:} Urban 5G base station equipped with its own backup battery and co-located with a battery swapping cabinet (BSC) containing multiple modular packs that serve external swapping demand while sharing the same grid connection point (Fig.~1; Sec.~2). Key features: time-of-use pricing, demand-response (DR) signals, strict SoC bounds (20--80\%), minimum BS reserve duration $T_{\mathrm{res}}$, stochastic swapping demand $\lambda_{\mathrm{swp\_dmd}}(t)$, and penalties for unmet swaps $\alpha_{\mathrm{rep}}$ (Nomenclature). Hourly dispatch simulated in Python over daily horizons (Sec.~5).
+
+\textbf{Method:} Profit-maximising RL with a single scalar objective (Eq.~20) that balances DR revenue against energy cost and swapping penalties, subject to SoC, DR, reserve, and swapping constraints (Eqs.~1--19). Solved via Soft Actor--Critic (SAC; Algorithm~1). State comprises BS and BSC SoC, electricity price, DR signal, and predicted swapping demand; actions control aggregate charge/discharge power of the BS battery and the BSC storage unit. Entropy regularisation aids exploration (Sec.~4.3).
+
+\textbf{Key results:} SAC increases daily operational profit by 15.2\% versus MILP while satisfying 98.7\% of swapping demands and keeping BS reserve above 95\% (Table~3). Coordinated BS-BSC discharging reduces peak--valley difference by 22.4\%; SAC converges faster and violates constraints less than DDPG and TD3 (Fig.~7; Figs.~8--10).
+
+\textbf{Relevance and limitations for this thesis:}
+\begin{itemize}
+    \item Strong precedent for RL-based management of a \emph{battery-inventory system} (BSC with stochastic external demand), offering clear parallels to this thesis's diesel-fuel inventory with replenishment uncertainty and availability constraints.
+    \item Detailed SoC bounds, reserve requirements, and unmet-demand penalties directly inform our safety and storage modelling for telecom sites.
+    \item \textbf{Critical gap:} No diesel generators or fuel logistics are modelled—energy supply is exclusively grid + batteries; there is \textbf{no fuel inventory state, replenishment action, delivery lead time}, or \textbf{stockout risk} (absent from Secs.~2--4).
+    \item Battery ageing is only implicitly mitigated via SoC limits; no explicit cycle/calendar degradation cost appears in the reward.
+    \item Assumes continuously available urban grid (no outages) and uses single-site simulations, ignoring multi-day autonomy, seasonal variability, or supply-chain disruptions typical of rural/off-grid telecom towers.
+\end{itemize}
+
+\subsubsection{Cho et al. (2025)}
+\label{sec:cho-et-al}
+\textit{Multiagent Distributed DQN and Transfer Learning for Energy-Efficient Power Management in Solar Energy-Harvested Small-Cell Networks} \cite{cho_2025_solar_smallcell_ddqn}.
+
+\textbf{Venue:} \textit{IEEE Internet of Things Journal}, vol.~12, no.~12, pp.~19590--19605 (2025). DOI: 10.1109/JIOT.2025.3545027.
+
+\textbf{System modelled:} Heterogeneous network with one grid-powered macro base station (MBS) and multiple small-cell base stations (SBSs) powered exclusively by solar photovoltaic generation and on-site battery storage (Sec.~II; Fig.~1). Includes inter-cell interference, user mobility, SINR-based association, battery SoC dynamics, and realistic solar irradiance from typical meteorological year (TMY) datasets (Sec.~IV; Fig.~3). Simulated over multi-day horizons in a dense urban layout.
+
+\textbf{Method:} Multiagent distributed deep Q-network (MA-DDQN) framework for decentralized SBS transmit-power control (Sec.~III). Each SBS agent observes local battery SoC, solar harvest, channel quality, and interference; a shared global reward promotes cooperation. Actions adjust transmit power via a discrete three-level change set $\{-\Delta P, 0, +\Delta P\}$ (Eq.~20). Augmented with daily transfer learning: Day~1 pretrained model is fine-tuned on subsequent days to accelerate adaptation to new solar patterns (Sec.~III-C).
+
+\textbf{Key results:} MA-DDQN achieves energy efficiency of 7.88--8.19~Mb/s/W, outperforming the grid-powered Legacy-DQN baseline (2.54~Mb/s/W) by approximately 3.10--3.22$\times$ (Fig.~4). Outage users decrease from 29.23 to 26.54 (9.2\% reduction) at penalty $\rho=0.5$ (Fig.~5). Transfer learning reaches 92--95\% of full retraining performance at under 5\% of the training cost, yielding 1.10--2.87$\times$ higher cumulative reward than direct transfer (Figs.~10--12).
+
+\textbf{Relevance and limitations for this thesis:}
+\begin{itemize}
+    \item Provides a strong precedent for multiagent distributed RL in purely renewable-powered telecom systems, with transfer learning for solar variability---methodologically relevant to handling seasonal and weather uncertainty.
+    \item Demonstrates cooperative MARL for interference-aware power control under strict energy constraints, aligning with our multi-objective hybrid-energy scheduling.
+    \item \textbf{Critical gap:} No diesel generators or fuel logistics are modelled---SBSs rely solely on solar + battery (no grid backup); there is \textbf{no fuel inventory state, replenishment action, delivery delay}, or \textbf{stockout risk}.
+    \item Battery modelling uses simple SoC dynamics without degradation costs, cycle ageing, or safety constraints.
+    \item Focuses on dense urban small-cell networks with reliable macro-grid support; does not address remote/rural outages, multi-site logistics, or long-horizon autonomy typical of telecom towers in developing regions.
+\end{itemize}
+\noindent Despite advances, \textbf{none of these papers incorporate diesel tank levels, replenishment decisions, or stochastic delivery delays}, a critical omission this thesis addresses.
+
+\section{RL for Microgrid and Hybrid Energy Scheduling}
+
+Reinforcement learning (RL) has been widely studied in isolated and remote microgrids, particularly for photovoltaic (PV)–battery–diesel systems. Across well over one hundred microgrid EMS papers published between 2013 and 2025, diesel generators (DGs) are almost always modelled as \emph{instantaneous cost or emission sources}, with fuel assumed to be continuously available on demand. Neither DG fuel \emph{inventory} nor \emph{replenishment} processes are explicitly represented.
+
+The closest works to inventory-style modelling include:
+\begin{itemize}
+    \item \textbf{Lei et al. (2021) \citep{lei_2021_drl_microgrid_dispatch}} — RL-based dispatch for isolated microgrids with diesel shortage penalties and DG fuel-consumption constraints. While this introduces ``inventory-like'' behaviour, it does not model fuel stock, ordering decisions, or delivery lead times.
+    \item \textbf{Kuznetsova et al. (2013) \citep{kuznetsova_2013_microgrid_rl}} — classical RL for microgrid energy management under stochastic generation. DG availability is uncertain, but fuel logistics and replenishment are not represented.
+\end{itemize}
+
+A structured Scopus landscape scan conducted for this thesis—covering 181
+papers across three query families on (i) RL-based isolated microgrids,
+(ii) indirect fuel and diesel-cost modelling, and (iii) inventory and
+lead-time modelling in energy systems—indicates that:
+\begin{enumerate}
+    \item RL-based microgrid controllers typically represent diesel fuel
+    implicitly through generation cost and DG power limits; none of the
+    surveyed works treats diesel volume as an explicit state variable.
+    \item No surveyed microgrid EMS paper incorporates stochastic diesel
+    delivery lead-times, explicit refuelling actions, or fuel-stockout
+    dynamics in the control formulation.
+    \item Inventory-theoretic models appear mainly in hydrogen, gas, and
+    generic energy-storage applications, and have not been transferred to
+    diesel–battery microgrids or telecom tower power systems.
+\end{enumerate}
+
+\begin{table}[t]
+\centering
+\caption{Representative RL-based microgrid controllers and diesel-fuel/logistics modelling.}
+\label{tab:rl_microgrid_comparison}
+
+\setlength{\tabcolsep}{3pt}
+\small
+
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{
+p{3.4cm}
+p{2.9cm}
+p{2.6cm}
+p{1.5cm}
+p{2.4cm}
+}
+\toprule
+\textbf{Paper} & \textbf{System domain} & \textbf{RL method} &
+\textbf{DG?} & \textbf{Fuel / logistics model?} \\
+\midrule
+
+Tang \emph{et al.} (2025) &
+Isolated microgrid &
+DQN-based control &
+Yes &
+None \\
+
+Shen \emph{et al.} (2025) &
+Isolated microgrid &
+Deep RL LFC &
+Optional &
+None \\
+
+Jayaraj \emph{et al.} (2025) &
+Isolated microgrid &
+Q-learning &
+Yes &
+None \\
+
+Ma \emph{et al.} (2025) &
+Islanded microgrid &
+DQN-based EMS &
+No &
+None \\
+
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Thus, despite extensive RL-based work on microgrid scheduling,
+fuel-aware economic dispatch, and diesel cost minimisation,
+none of the surveyed works couples energy scheduling with explicit
+diesel-inventory dynamics, stochastic delivery lead-times, and telecom-grade
+uptime constraints. This gap is critical for rural telecom towers, where
+multi-week delivery delays and fuel stockouts directly threaten the 99.99\,\%
+uptime requirements specified in industry quality-of-service targets.
+
+\subsection{HOMER and Grid Integration Studies}
+
+HOMER and similar tools focus on optimal design and sizing; they do not
+explicitly model real-time operational dispatch policies beyond fixed
+schedules and simple heuristics \citep{homer_energy_2020}. Studies applying
+HOMER to solar/DG sizing for telecom towers treat dispatch control as static
+and largely unresolved, focusing instead on capacity mix and cost trade-offs
+\citep{meena2020_homer_telecom}.
+
+\subsection{Operational Control and Industry Practice}
+
+Embedded rule-based controllers in tower Power Management Units (PMUs) and
+Hybrid Power Controllers (HPCs) follow fixed priority and threshold logic,
+typically aligned with guidance such as ITU-T L.1380 and vendor application
+notes from commercial PMU suppliers \citep{itut_l1380_green_ict,asentria_pmu_2023}.
+These controllers lack predictive or adaptive capabilities and do not account
+for long-horizon fuel logistics or battery ageing, reinforcing the need for
+RL-based supervisory control.
+
+\section{Inventory and Replenishment Theory in Fuel/Energy Logistics}
+
+Deep RL has matured in inventory-style energy and logistics problems, including
+energy storage and battery management \citep{mao2021_inventory_rl},
+EV battery-swapping stations \citep{qi_2025_battery_swapping_inventory},
+and various fuel-cost-aware microgrid dispatch schemes (2021--2025 literature).
+
+\textbf{Key Distinctions for Telecom Diesel:} Compared to EV stations or urban
+microgrids, rural telecom diesel logistics exhibit:
+\begin{itemize}
+    \item Long (days--weeks) and highly stochastic lead times
+    \item Stockouts triggering immediate network downtime and SLA/QoS penalties
+    \item Delivery failures cascading across widely dispersed sites
+    \item Strict environmental compliance and on-site tank capacity constraints
+\end{itemize}
+
+These characteristics make the telecom diesel inventory problem
+\textbf{significantly more complex and operationally critical} than
+existing energy-inventory applications.
+
+\section{Battery Ageing, Safety Constraints, and Stochastic Operation}
+
+Recent work has advanced RL-based modelling of battery ageing using
+rainflow or depth-of-discharge-driven degradation models
+\citep{alhajhassan_2024_battery_ageing_rl,deng_2025_5g_microgrid_ka},
+safe-RL formulations with Lagrangian safety critics for constrained
+operation in power--communication systems \citep{yan_2025_safe_marl_bs},
+and advanced forecasting and transfer-learning methods for telecom
+energy management \citep{ma_pan_2025_telecom_ies,cho_2025_solar_smallcell_ddqn}.
+% ── REVISED: removed the over-claim that "none integrates battery ageing,
+%    hard safety, stochastic renewables, AND diesel inventory in a single RL
+%    framework" plus "multi-agent" — replaced with a narrower, accurate gap ──
+However, none of these works combines explicit diesel-inventory dynamics,
+logistics uncertainty, and telecom-specific operational constraints within
+a single RL formulation tailored to rural hybrid PV--battery--diesel
+dispatch.  Battery safety constraints and operational feasibility are often
+treated only partially, and the interaction between long-horizon fuel
+logistics and real-time energy control remains largely unaddressed in the
+literature.
+
+\section{Identified Research Gap}
+
+% ── REVISED gap table: This thesis row corrected.
+%    Multi-agent: × (single-agent PPO, not MARL)
+%    Battery degradation: partial (cost term in reward, not explicit
+%      cycle/calendar ageing model)
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{table}[htbp]
+\centering
+\small
+\caption{Comparative overview of representative works across telecom RL,
+microgrid RL, and inventory-aware logistics.
+(\checkmark{} = fully addressed; \textit{partial} = partially addressed;
+\texttimes{} = not addressed).}
+\label{tab:litgap}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{p{3.3cm}cccccccc}
+\toprule
+Reference & Hybrid telecom & DG & Batt.\ degr. & Fuel inv./repl. &
+Deliv.\ delay & Safety/feas. & Multi-agent & Long horizon \\
+\midrule
+Ma \& Pan (2025) \citep{ma_pan_2025_telecom_ies}
+  & \checkmark & \checkmark & \textit{partial} & \texttimes & \texttimes & \texttimes & \texttimes & \checkmark \\
+Yan et al. (2025) \citep{yan_2025_safe_marl_bs}
+  & \checkmark & \texttimes & \texttimes & \texttimes & \texttimes & \checkmark & \checkmark & \texttimes \\
+Al Haj Hassan (2024) \citep{alhajhassan_2024_battery_ageing_rl}
+  & \checkmark & \texttimes & \checkmark & \texttimes & \texttimes & \textit{partial} & \texttimes & \checkmark \\
+Deng et al. (2025) \citep{deng_2025_5g_microgrid_ka}
+  & \textit{partial} & \texttimes & \checkmark & \texttimes & \texttimes & \checkmark & \texttimes & \texttimes \\
+Qi et al. (2025) \citep{qi_2025_battery_swapping_inventory}
+  & \texttimes & \texttimes & \texttimes & \checkmark~(batt.) & \textit{partial}~(batt.) & \texttimes & \texttimes & \texttimes \\
+Cho et al. (2025) \citep{cho_2025_solar_smallcell_ddqn}
+  & \checkmark & \texttimes & \textit{partial} & \texttimes & \texttimes & \textit{partial} & \checkmark & \textit{partial} \\
+Rep.\ fuel\,/\,energy-inventory logistics works (2019--2025)
+  & \texttimes & \textit{partial} & \textit{partial} & \textit{partial} & \textit{partial} & \texttimes & \texttimes & \textit{partial} \\
+\textbf{This thesis}
+  & \textbf{\checkmark} & \textbf{\checkmark} & \textit{\textbf{partial}}
+  & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{\checkmark}
+  & \texttimes & \textbf{\checkmark} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+% ── REVISED Core Novelty: rewritten to match actual Phase-II implementation.
+%    Removed: "first deep RL formulation", "multi-agent", strong battery-ageing claim.
+%    Replaced with: accurate inventory-aware framing, "one of the first", safer verbs.
+% ─────────────────────────────────────────────────────────────────────────────
+\textbf{Core Novelty of This Thesis:}
+This thesis proposes, to the best of the author's knowledge, one of the
+first reinforcement-learning formulations for hybrid telecom-tower control
+that explicitly models diesel as a finite replenishable inventory under
+uncertain delivery and outage conditions.  Its distinguishing contribution
+is the integration of telecom energy dispatch with an inventory-inspired
+diesel-logistics state representation within a constrained decision-making
+framework, evaluated empirically using real ITU/Zindi site traces within a data-grounded simulation environment.
+
+\begin{itemize}
+    \item \textbf{Models} diesel as a finite replenishable inventory with
+    explicit on-site fuel level and in-transit replenishment state
+    ($\mathrm{Pipe}_t$), enabling anticipatory ordering decisions under
+    stochastic lead times.
+
+    \item \textbf{Captures} logistics uncertainty through delayed fuel
+    arrival and stockout-sensitive operating conditions, directly linking
+    replenishment decisions to service continuity risk.
+
+    \item \textbf{Combines} hybrid energy dispatch and inventory-aware
+    fuel management in a unified RL environment (single-agent CMDP),
+    with action masking to enforce hard operational feasibility constraints.
+
+    \item \textbf{Empirically tests} whether joint \emph{learning} of
+    dispatch and ordering outperforms classical hierarchical decomposition
+    ($(s,S)$ ordering with separate RL dispatch), using a structured
+    ablation study on real ITU/Zindi site traces across ten base stations
+    within a data-grounded simulation environment.
+
+    \item \textbf{Evaluates} robustness to logistics stress by comparing
+    normal and delayed replenishment scenarios, identifying the conditions
+    under which inventory-aware RL provides reliable advantage.
+\end{itemize}
+
+\section{Conclusion}
+
+The literature firmly establishes deep RL as a state-of-the-art tool for
+complex energy systems, while diesel fuel---the reliability backbone of
+rural telecom towers---remains largely absent as an explicit inventory
+process in existing formulations.
+% ── REVISED: removed "first comprehensive CMDP and methodological framework"
+%    and "battery ageing" from the claim; replaced with narrower, accurate framing ──
+By bringing together inventory theory, constrained RL concepts, and long-horizon
+hybrid-energy control, this thesis develops a telecom-specific CMDP
+framework for explicitly inventory-aware diesel-energy management.  To
+the best of the author's knowledge, existing RL formulations for telecom
+energy systems do not model diesel fuel as a replenishable,
+logistics-constrained state variable in the manner proposed here, nor do
+they empirically test the value of joint ordering and dispatch learning
+against principled decomposition alternatives.
+
+The following chapter presents the detailed system modelling, inventory
+dynamics, Constrained Markov Decision Process formulation, and constrained
+RL architecture underpinning the proposed framework.
+\clearpage

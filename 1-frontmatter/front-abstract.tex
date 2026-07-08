@@ -1,0 +1,65 @@
+% filename: abstract-final.tex
+% Base: corrected draft provided by student
+% Fixes applied:
+%   - "up to 49.6%" → "a 49.6% reduction" (matches Ch7/Ch8 framing)
+%   - Added robustness finding (+122% EENS under delayed logistics) — Ch8 §8.2
+%   - "can significantly reduce" → factual conditional framing
+%   - Closing sentence: removed promotional "demonstrate the potential"; replaced
+%     with measured finding + caveat, matching Ch8 conclusion tone
+%   - Keywords: removed "safe RL"; added "action masking", "ITU dataset",
+%     "expected energy not served", "logistics uncertainty"
+%   - "solar–battery–diesel" hyphenation standardised
+%   - Minor: "Maskable Proximal Policy Optimisation" spelled out on first use
+% ============================================================
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+\begin{tabular}{@{} >{\bfseries}p{0.2\textwidth} p{0.77\textwidth} @{}}
+\texorpdfstring{\MakeUppercase{Keywords}}{Keywords} &
+telecom tower sites; hybrid energy systems; solar PV; battery storage;
+diesel logistics; reinforcement learning; constrained Markov decision process;
+inventory management; action masking; expected energy not served
+\end{tabular}
+\par
+\begin{doublespacing}
+
+Reliable and low-carbon energy management for hybrid telecom tower sites
+remains a critical challenge in regions with weak or intermittent electricity
+supply. Conventional rule-based controllers and offline optimisation tools
+such as HOMER Pro rely on fixed thresholds and deterministic assumptions,
+making them unable to adapt to stochastic solar generation, grid outages, and
+fuel logistics uncertainty.
+
+This thesis studies the operational control of hybrid
+solar--battery--diesel telecom tower systems under uncertainty in renewable
+generation, grid availability, and diesel delivery. The problem is formulated
+as a Constrained Markov Decision Process (CMDP) that explicitly models
+battery state-of-charge limits and diesel inventory dynamics, including diesel replenishment ordering and stochastic delivery lead times.
+
+A data-grounded simulation environment is developed using the ITU~2024
+Smart Energy Scheduling dataset, comprising operational traces from ten
+telecom base station sites at hourly resolution. Reinforcement learning
+policies are trained using a Maskable Proximal Policy Optimisation
+(\texttt{MaskablePPO}) agent with hard action masking to enforce operational
+feasibility constraints at every timestep.
+
+The proposed inventory-aware reinforcement learning policy (RLInv) is
+evaluated against rule-based controllers and hierarchical decomposition baselines through
+a structured eight-variant ablation study under two logistics scenarios.
+Under the trained logistics scenario, RLInv achieves a 49.6\% reduction in
+Expected Energy Not Served (EENS) relative to the hierarchical decomposition
+baseline, a difference that is statistically significant ($p=0.042$,
+Cohen's $d=3.67$). However, under a delayed-delivery scenario, RLInv's EENS
+increases by 122\%, the largest degradation among all policies evaluated,
+indicating that the learned policy does not generalise robustly beyond its
+training logistics distribution.
+
+These results show that joint learning of diesel ordering and energy dispatch
+reduces unserved energy relative to decoupled ordering strategies under
+matched conditions, while classical inventory heuristics offer greater
+structural robustness under logistics stress. Both findings contribute to the
+understanding of when inventory-aware reinforcement learning provides
+reliable advantage for hybrid telecom energy management.
+
+\end{doublespacing}
