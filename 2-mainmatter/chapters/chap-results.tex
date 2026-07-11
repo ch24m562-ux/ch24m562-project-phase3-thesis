@@ -124,8 +124,8 @@ motivates the mechanistic analysis in Section~\ref{sec:mechanism}.
 \centering
 \includegraphics[width=\textwidth]{fig_eens_comparison_v4.png}
 \caption{Overall policy performance across delivery scenarios. Policies,
-left to right: \textbf{B0} (threshold dispatch, fixed-interval
-ordering), \textbf{B1} (threshold dispatch, calibrated $(s,S)$
+left to right: \textbf{B0} (threshold dispatch, fixed uncalibrated
+threshold ordering), \textbf{B1} (threshold dispatch, calibrated $(s,S)$
 ordering), \textbf{MPC} (model-predictive dispatch; planning horizon
 discussed in Chapter~\ref{chap:methodology}), \textbf{TrackB}
 ($(s,S)$ ordering with a separately learned dispatch policy),
@@ -298,9 +298,11 @@ null RLInv-vs-A7 comparison.}
 \subsection{Inventory observability}
 \label{sec:mechanism_h3}
 
-\textbf{Evidence.} A5 is trained identically to RLInv but with
-inventory and pending-delivery state removed from its observation
-space. RLInv achieves numerically lower mean EENS than A5 in every
+\textbf{Evidence.} A5 is trained identically to RLInv but with five
+logistics/inventory-related channels removed from its observation
+space (inventory level, pending-delivery flag, pending quantity,
+elapsed time since ordering, and the remaining delivery-time channel).
+RLInv achieves numerically lower mean EENS than A5 in every
 scenario, but the paired differences are small and do not reach
 statistical significance under the final evaluation protocol
 ($|d_z|$ ranging 0.24--0.69; closest to significance under Extreme,
@@ -324,8 +326,9 @@ control architecture itself.
 \begin{figure}[htb]
 \centering
 \includegraphics[width=0.75\textwidth]{fig_ablation_h3_v3.png}
-\caption{Inventory observability: RLInv (observes tank fill fraction
-and pending-delivery status) vs.\ A5 (identical, these two observations
+\caption{Inventory observability: RLInv (observes tank fill fraction,
+pending-delivery status, and ordering-history channels) vs.\ A5
+(identical, these five logistics/inventory-related observations
 zeroed). RLInv is numerically lower in every scenario but the
 difference does not reach significance ($p=0.058$ at closest, Extreme
 scenario). Error bars: 95\% CI, $n=10$ seeds.}

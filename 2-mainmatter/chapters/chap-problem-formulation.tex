@@ -32,6 +32,9 @@ $E_{\Bat}$                             & Battery energy capacity (kWh) \\
 $\eta_{\ch},\; \eta_{\dis}$            & Charge/discharge efficiency \\
 $\hour_t$                              & Hour-of-day encoded as $(\sin(2\pi h/24),\cos(2\pi h/24))$ \\
 $L_t$                                  & Stochastic lead time (timesteps) for a placed diesel order \\
+$\tau_t$                               & Hours elapsed since the last order was placed (reset to 0 on each new order) \\
+$R_t$                                  & Estimated hours remaining until delivery; identically zero except in the
+                                         separate lognormal-forecast extension not used in the main experiments \\
 $A_t$                                  & Diesel arrival quantity at time $t$ (litres) \\
 $\gamma$                               & Discount factor \\
 \midrule
@@ -221,15 +224,22 @@ s_t = \bigl[\,
   P_t^{\PV},\;
   P_t^{\Load},\;
   G_t,\;
-  \hour_t
+  \hour_t,\;
+  \tau_t,\;
+  R_t
 \,\bigr],
 \label{eq:state}
 \end{equation}
 where $\hour_t = (\sin(2\pi h/24),\,\cos(2\pi h/24))$ encodes the hour of
-day as a two-dimensional cyclic feature.
+day as a two-dimensional cyclic feature, $\tau_t$ is the elapsed time
+since the last order was placed, and $R_t$ is an estimated
+delivery-remaining-time signal that is identically zero throughout the
+main experiments (Chapter~\ref{chap:results}) and becomes informative
+only in a separate lognormal-forecast extension outside the primary
+scope of this thesis.
 
-The observation consists of seven logical components, corresponding to nine
-scalar inputs after expansion of the cyclic hour-of-day encoding.
+The observation consists of nine logical components, corresponding to
+eleven scalar inputs after expansion of the cyclic hour-of-day encoding.
 Table~\ref{tab:state_sources} documents the data provenance of
 each component, a distinction the panel raised explicitly in Phase-I review.
 
@@ -247,12 +257,16 @@ $\SoC_t$      & Simulator state    & Evolved via Eq.~\eqref{eq:soc} from real in
 $\Inv_t$      & Simulator state    & Derived from ITU fuel-level column and tank capacity \\
 $\Pipe_t$     & Synthetic          & Log-normal lead-time overlay; sole synthetic component \\
 $\hour_t$     & Derived            & Computed from ITU timestamp \\
+$\tau_t$      & Simulator state    & Counter reset on each new order; always active \\
+$R_t$         & Synthetic (inactive) & Present in the observation vector but fixed at zero for
+                                       every experiment reported in this thesis \\
 \bottomrule
 \end{tabular}
-\caption{Data provenance of each state variable. $\Pipe_t$ is the only
-component introduced synthetically through an explicit stochastic lead-time
-model; the remaining components are either obtained directly from the
-ITU/Zindi dataset or evolved from dataset-grounded initial conditions.}
+\caption{Data provenance of each state variable. $\Pipe_t$ and $R_t$ are
+introduced synthetically; $R_t$ additionally never takes a non-zero
+value anywhere in the reported experiments. The remaining components are
+either obtained directly from the ITU/Zindi dataset or evolved from
+dataset-grounded initial conditions.}
 \label{tab:state_sources}
 \end{table}
 
@@ -446,7 +460,7 @@ episodic Constrained Markov Decision Process defined by the tuple
 \[
 (\mathcal{S},\,\mathcal{A},\,\mathcal{P},\,c,\,\mathcal{C},\,\gamma),
 \]
-where $\mathcal{S} \subset \mathbb{R}^9$ is the state space defined in
+where $\mathcal{S} \subset \mathbb{R}^{11}$ is the state space defined in
 Section~\ref{sec:state}, $\mathcal{A}$ is the action space of
 Section~\ref{sec:action}, $\mathcal{P}$ captures the stochastic battery and
 inventory dynamics of Section~\ref{sec:dynamics}, $c$ is the cost function

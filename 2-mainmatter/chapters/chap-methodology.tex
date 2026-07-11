@@ -1,28 +1,70 @@
-% filename: chap-methodology-revised.tex
+% filename: chap-methodology-v2.tex
+% Phase 3 rewrite: restructured into 4.1-4.7 per reorganisation plan.
+% All numeric values verified against src/config/hparams.yaml and the
+% actual Phase 3 dataset (results/phase3/master_summary.csv), not
+% carried over from the Phase 2 draft.
 \chapter{Methodology and Implementation}
 \label{chap:methodology}
 
 Chapter~\ref{chap:problem} defined the formal CMDP governing telecom tower
-energy management.  This chapter presents the implemented solution framework, including the
-simulator, reinforcement-learning agent, safety mechanisms, training pipeline,
-comparison policies, and evaluation protocol.  Practical simplifications relative to the formal model are
-consolidated in Section~\ref{sec:impl_deviations}.
-
+energy management. This chapter presents the implemented solution
+framework: the simulator and training pipeline (Sections~\ref{sec:overview}
+and~\ref{sec:rationale}), the environment implementation
+(Section~\ref{sec:env_impl}), the reward design and its justification
+(Section~\ref{sec:reward_design}), the full comparison-policy set
+(Section~\ref{sec:comparison_policies}), the experimental protocol
+(Section~\ref{sec:evaluation_protocol}), and the deviations between the
+formal model and what was actually built
+(Section~\ref{sec:impl_deviations}).
 
 % ============================================================
 \section{Methodology Overview}
 \label{sec:overview}
 % ============================================================
 
+Figure~\ref{fig:chapter_roadmap} orients the reader before the technical
+detail that follows: the CMDP formulated in Chapter~\ref{chap:problem} is
+solved by the RLInv agent designed in this chapter, trained and
+evaluated as described here, with the resulting evidence reported in
+Chapter~\ref{chap:results}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.9cm,
+  box/.style={draw, rounded corners, align=center,
+              minimum width=3.4cm, minimum height=0.7cm, font=\small}
+]
+\node[box] (problem)  {Problem (Ch.~\ref{chap:problem})};
+\node[box, below of=problem]   (cmdp)    {CMDP Formulation};
+\node[box, below of=cmdp]      (rlinv)   {RLInv Design};
+\node[box, below of=rlinv]     (train)   {Training};
+\node[box, below of=train]     (eval)    {Evaluation};
+\node[box, below of=eval]      (stats)   {Statistics};
+\node[box, below of=stats]     (results) {Results (Ch.~\ref{chap:results})};
+
+\draw[->] (problem) -- (cmdp);
+\draw[->] (cmdp)    -- (rlinv);
+\draw[->] (rlinv)   -- (train);
+\draw[->] (train)   -- (eval);
+\draw[->] (eval)    -- (stats);
+\draw[->] (stats)   -- (results);
+\end{tikzpicture}
+\caption{Chapter roadmap: from the formal problem to the reported
+evidence.}
+\label{fig:chapter_roadmap}
+\end{figure}
+
 Figure~\ref{fig:workflow} shows the overall pipeline from raw data to
-operational metrics.  The ITU/Zindi dataset is loaded and split per site into
-a 45-day training block and a 15-day test block.  Each site's time series
-drives a Gymnasium-compatible \texttt{TelecomEnv} simulator.  \texttt{MaskablePPO}
-agents are trained within this simulator, producing a learned policy that is
-subsequently frozen and evaluated across all ten sites under two logistics
-scenarios.  Operational metrics---primarily Expected Energy Not Served
-(EENS)---are computed from the evaluation rollouts.  Exploratory data analysis
-of the dataset is presented in Chapter~\ref{chap:datasets-setup}.
+operational metrics. The ITU/Zindi dataset is loaded and split per site
+into a 45-day training block and a 15-day test block. Each site's time
+series drives a Gymnasium-compatible \texttt{TelecomEnv} simulator.
+\texttt{MaskablePPO} agents are trained within this simulator, producing a
+learned policy that is subsequently frozen and evaluated across all ten
+sites under four delivery-logistics scenarios. Operational
+metrics---primarily Expected Energy Not Served (EENS)---are computed from
+the evaluation rollouts. Exploratory data analysis of the dataset is
+presented in Chapter~\ref{chap:datasets-setup}.
 
 \begin{figure}[htbp]
 \centering
@@ -34,9 +76,9 @@ of the dataset is presented in Chapter~\ref{chap:datasets-setup}.
 \node[box] (data)    {ITU/Zindi Dataset\\{\scriptsize 10 sites, 60 days each}};
 \node[box, below of=data]   (split)   {Train / Test Split\\{\scriptsize 45 days train \textbar\ 15 days test}};
 \node[box, below of=split]  (env)     {TelecomEnv Simulator\\{\scriptsize Gymnasium, hourly $\Delta t$}};
-\node[box, below of=env]    (train)   {RL Training\\{\scriptsize MaskablePPO, 3 seeds}};
+\node[box, below of=env]    (train)   {RL Training\\{\scriptsize MaskablePPO, 10 seeds}};
 \node[box, below of=train]  (policy)  {Learned Policy\\{\scriptsize Frozen weights}};
-\node[box, below of=policy] (eval)    {Evaluation\\{\scriptsize 10 sites, 30 episodes/seed}};
+\node[box, below of=policy] (eval)    {Evaluation\\{\scriptsize 10 sites, 4 scenarios, 10 episodes/seed}};
 \node[box, below of=eval]   (metrics) {Operational Metrics\\{\scriptsize EENS, Diesel, Uptime}};
 
 \draw[->] (data)    -- (split);
@@ -46,90 +88,95 @@ of the dataset is presented in Chapter~\ref{chap:datasets-setup}.
 \draw[->] (policy)  -- (eval);
 \draw[->] (eval)    -- (metrics);
 \end{tikzpicture}
-\caption{End-to-end workflow of the proposed reinforcement-learning framework,
-from dataset ingestion through policy training to operational evaluation.}
+\caption{End-to-end workflow of the proposed reinforcement-learning
+framework, from dataset ingestion through policy training to operational
+evaluation.}
 \label{fig:workflow}
 \end{figure}
 
 
 % ============================================================
-\section{Rationale for the Proposed Methodology}
+\section{Design Decisions}
 \label{sec:rationale}
 % ============================================================
 
 \subsection{Why PPO rather than value-based methods?}
 
 The decision problem combines generator commitment and diesel ordering over
-long horizons (720-step episodes).  Value-based methods such as DQN enumerate
-$Q$-values for each action combination and are known to exhibit instability in
-long-horizon environments with stochastic dynamics~\citep{mnih2015humanlevel}.
-Proximal Policy Optimisation (PPO) optimises a parameterised policy directly
-using a clipped surrogate objective that constrains update
-magnitude~\citep{schulman2017proximal}, providing the training stability
-required here.  PPO has demonstrated robust performance in long-horizon
-control problems and energy-management
+long horizons (720-step training episodes). Value-based methods such as DQN
+enumerate $Q$-values for each action combination and are known to exhibit
+instability in long-horizon environments with stochastic
+dynamics~\citep{mnih2015humanlevel}. Proximal Policy Optimisation (PPO)
+optimises a parameterised policy directly using a clipped surrogate
+objective that constrains update magnitude~\citep{schulman2017proximal},
+providing the training stability required here. PPO has demonstrated
+robust performance in long-horizon control problems and energy-management
 applications~\citep{perera2021application,zhang2021deep}, making it the
 natural algorithm family for this work.
 
 \subsection{Why MaskablePPO rather than penalty-based constraint handling?}
 
 Penalty-based constraint handling adds infeasibility costs to the reward.
-A finite penalty cannot guarantee zero hard violations: if the coefficient is
-poorly calibrated the policy still explores infeasible actions, and a diesel
-stockout or battery deep-discharge causes immediate, irreversible service loss.
-\texttt{MaskablePPO} from \texttt{sb3-contrib} instead sets infeasible action
-logits to $-\infty$ before the softmax, making the probability of any
-infeasible action exactly zero by construction.  This converts the constraint
-set $\mathcal{C}(s_t)$ into a hard structural property of the policy
-distribution and eliminates penalty-coefficient tuning entirely.
+A finite penalty cannot guarantee zero hard violations: if the coefficient
+is poorly calibrated the policy still explores infeasible actions, and a
+diesel stockout or battery deep-discharge causes immediate, irreversible
+service loss. \texttt{MaskablePPO} from \texttt{sb3-contrib} instead sets
+infeasible action logits to $-\infty$ before the softmax, making the
+probability of any infeasible action exactly zero by construction. This
+converts the constraint set $\mathcal{C}(s_t)$ into a hard structural
+property of the policy distribution and eliminates penalty-coefficient
+tuning entirely.
 
-\subsection{Why a unified agent (RLInv) alongside hierarchical decomposition
-(TrackB)?}
+\subsection{Why a unified agent (RLInv) alongside hierarchical decomposition?}
 
 Classical decomposed approaches use separate controllers for inventory
-ordering and energy dispatch.  This ignores the bidirectional coupling: the
-dispatch controller depletes inventory, while inventory level constrains which
-dispatch actions are feasible.  A unified agent can in principle exploit this
-coupling by jointly optimising both decisions from a single reward signal.
-Whether that benefit justifies the added learning complexity is the central
-empirical question (hypothesis H1).  Both architectures are therefore trained
-and evaluated under identical conditions; neither outcome is assumed in advance.
+ordering and energy dispatch. This ignores the bidirectional coupling: the
+dispatch controller depletes inventory, while inventory level constrains
+which dispatch actions are feasible. A unified agent can in principle
+exploit this coupling by jointly optimising both decisions from a single
+reward signal. Whether that benefit justifies the added learning
+complexity is the central empirical question (Hypothesis~H1, tested via
+the comparator policies of Section~\ref{sec:comparison_policies}). All
+architectures are trained and evaluated under identical conditions;
+neither outcome is assumed in advance.
 
 \subsection{Why a discrete action space?}
 
 Although battery dispatch could be formulated as a continuous RL action,
 rural charge-controllers follow fixed priority rules rather than
-continuous analogue setpoints.  The implemented system therefore delegates
+continuous analogue setpoints. The implemented system therefore delegates
 battery dispatch to a deterministic priority rule, focusing RL learning
 capacity on the logistics decisions (generator commitment and ordering)
 where non-myopic planning is most valuable.
 
 \subsection{Why a flat MLP rather than modular encoders?}
 
-With a 9-dimensional observation vector, a two-layer flat MLP $[256,\,256]$
-provides sufficient representational capacity.  Modular domain-specific
-encoders introduce additional architectural hyperparameters (encoder depth,
-output dimension, concatenation structure) with no demonstrated benefit at
-this input dimensionality.  The flat design simplifies implementation and is
-directly supported by the Stable-Baselines3 \texttt{MlpPolicy} without
-a custom feature extractor.
+With an 11-dimensional observation vector, a two-layer flat MLP
+$[256,\,256]$ provides sufficient representational capacity. Modular
+domain-specific encoders introduce additional architectural
+hyperparameters (encoder depth, output dimension, concatenation
+structure) with no demonstrated benefit at this input dimensionality. The
+flat design simplifies implementation and is directly supported by the
+Stable-Baselines3 \texttt{MlpPolicy} without a custom feature extractor.
 
 
 % ============================================================
-\section{Implemented Environment and Training Setup}
-\label{sec:telecom_env}
+\section{Environment Implementation}
+\label{sec:env_impl}
 % ============================================================
 
-\subsection{Environment structure and observation}
+\subsection{Structure and observation}
 
 The environment is implemented as a Gymnasium-compatible class
-\texttt{TelecomEnv} operating at hourly resolution ($\Delta t = 1$\,h) with
-720-step episodes (30 simulated days).  During training, a random start index
-is sampled within the 45-day training block; evaluation is fixed to the
-15-day test block.  Episodes terminate after 720 steps; no early termination
-condition is used.
+\texttt{TelecomEnv} operating at hourly resolution ($\Delta t = 1$\,h)
+with 720-step training episodes (30 simulated days) and 360-step
+evaluation episodes (15 days, matching the held-out test split exactly).
+During training, a random start index is sampled within the 45-day
+training block; evaluation is fixed to the 15-day test block. Episodes
+terminate after the fixed step count; no early termination condition is
+used.
 
-The 9-dimensional observation at each step is:
+The 11-dimensional observation at each step is:
 \begin{multline}
 s_t = \bigl[
   \SoC_t,\;
@@ -140,46 +187,109 @@ s_t = \bigl[
   P_t^{\Load},\;
   G_t,\;
   \sin(2\pi h_t/24),\;
-  \cos(2\pi h_t/24)
+  \cos(2\pi h_t/24),\;
+  \tau_t,\;
+  R_t
 \bigr].
 \end{multline}
 The pending-delivery state uses a binary flag (order in transit?) and a
 scalar quantity (fuel expected on arrival), which together are logically
 equivalent to the single pipeline scalar $\Pipe_t$ of
 Chapter~\ref{chap:problem} under the single-outstanding-order constraint.
+Two further channels complete the 11-dimensional vector. \texttt{hours\_since\_order\_n}
+($\tau_t$) is the elapsed time since the last order was placed,
+resetting to zero whenever a new order is issued; it is active in the
+standard experiments. \texttt{delivery\_remaining\_n} ($R_t$) is present
+in the observation vector but zero in the principal geometric,
+no-ETA campaign reported throughout this thesis; it exists for
+compatibility with a separate lognormal-forecast extension outside the
+primary scope of this work. RLInv-DA (Chapter~\ref{chap:results})
+additionally adds an EWMA delay estimate as a twelfth channel, producing
+a 12-dimensional observation for that exploratory extension only.
 Hour-of-day is encoded as sine--cosine features so that hours~23 and~0 are
-adjacent in feature space.  Grid availability $G_t$ is treated as an
+adjacent in feature space. Grid availability $G_t$ is treated as an
 exogenous stochastic signal derived from the site time series rather than
-a decision variable.  All continuous features are normalised online
-using \texttt{VecNormalize}; statistics are frozen before evaluation.
+a decision variable. All continuous features are normalised online using
+\texttt{VecNormalize}; statistics are frozen before evaluation.
 
 \subsection{Action space, battery rule, and inventory}
 
+Diesel inventory is tracked in kWh-equivalent units. Tank capacity is
+$C^{\Tank} = 72\,\bar{D}$ (approximately three days of full-load backup,
+where $\bar{D}$ is the site mean hourly load). A generator start is
+permitted only if
+$\Inv_t \geq 1.20 \times P_{\mathrm{rated}}^{\DG} \times 2\,\mathrm{h}$,
+ensuring sufficient fuel for at least two hours of operation with a 20\%
+safety margin.
+
 The action space is discrete with six elements encoding
-$\DG_t \in \{0,1\}$ and $Q_t \in \{0,\;0.30\,C^{\Tank},\;0.60\,C^{\Tank}\}$.
-Battery dispatch is not a learnable action; it is determined by a fixed
+$\DG_t \in \{0,1\}$ and $Q_t \in \{0,\;0.30\,C^{\Tank},\;0.60\,C^{\Tank}\}$
+--- order quantities are expressed as a percentage of tank capacity rather
+than a fixed litre value, so that the same action encoding applies
+consistently across sites of different sizes.
+
+\begin{quote}
+\textbf{Implementation Note.} This differs from the fixed-litre order
+quantities described in Chapter~\ref{chap:problem}'s formal action space
+(Equation~\ref{eq:action}); the tank-relative encoding used here is the
+one actually implemented and evaluated throughout this thesis.
+\end{quote}
+
+Battery
+dispatch is not a learnable action; it is determined by a fixed
 energy-priority rule inside the simulator:
 \[
 \text{PV} \;\to\; \text{Grid} \;\to\; \text{Battery discharge}
 \;\to\; \text{DG} \;\to\; \text{Unmet load.}
 \]
 
-Diesel inventory is tracked in kWh-equivalent units.  Tank capacity is
-$C^{\Tank} = 72\,\bar{D}$ (approximately three days of full-load backup,
-where $\bar{D}$ is the site mean hourly load).  A generator start is
-permitted only if
-$\Inv_t \geq 1.20 \times P_{\mathrm{rated}}^{\DG} \times 2\,\mathrm{h}$,
-ensuring sufficient fuel for at least two hours of operation with a 20\% safety margin.  Diesel delivery delay is modelled as
-a geometric process: once an order is placed, delivery occurs at each
-subsequent step with probability $p_{\text{normal}}=1/24$ (mean 24\,h,
-normal scenario) or $p_{\text{delayed}}=1/48$ (mean 48\,h, delayed
-scenario).  The geometric model preserves a Markovian state with only the
-two pending-order scalars, avoiding a countdown vector.
+Diesel delivery delay is modelled as a geometric process: once an order is
+placed, delivery occurs at each subsequent step with a fixed per-step
+probability $p$, giving a mean lead time of $1/p$ hours. The geometric
+model preserves a Markovian state with only the two pending-order scalars
+(flag and quantity), avoiding a countdown vector. Four scenarios are used
+in the evaluation campaign: Normal ($p=1/24$, mean 24\,h), Delayed
+($p=1/48$, mean 48\,h), Monsoon ($p=1/72$, mean 72\,h), and Extreme
+($p=1/336$, mean 336\,h). Normal and Delayed are used during training;
+Monsoon and Extreme are evaluation-only out-of-distribution stress tests.
+Each scenario represents a distinct operating regime rather than an
+arbitrary parameter value (Table~\ref{tab:scenario_meaning}).
+
+\begin{table}[htb]
+\centering
+\small
+\caption{Operational interpretation of the four evaluation scenarios.}
+\label{tab:scenario_meaning}
+\begin{tabular}{lp{7.5cm}}
+\toprule
+\textbf{Scenario} & \textbf{Represents} \\
+\midrule
+Normal   & Routine logistics with nominal supplier performance \\
+Delayed  & Moderate but recurring delivery disruption \\
+Monsoon  & Seasonal degradation with prolonged uncertainty \\
+Extreme  & Severe logistics stress approaching worst-case operating
+           conditions \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Several candidate lead-time parameterisations were explored during
+simulator calibration. The final evaluation uses four representative
+logistics scenarios that span the range from routine operation to severe
+delivery disruption while avoiding redundant intermediate cases. The
+selected scenarios provide progressively increasing logistics uncertainty
+while maintaining clear operational interpretation; additional
+intermediate settings evaluated during development exhibited similar
+behavioural trends and were therefore omitted from the final experimental
+protocol to avoid redundant comparisons. Together, these four scenarios
+provide representative operating regimes for routine through severely
+disrupted logistics while maintaining a manageable and interpretable
+experimental design.
 
 \subsection{Safety handling}
 
-Safety is enforced through hard action masking applied at every step.
-Two rules are checked before the policy samples an action.
+Safety is enforced through hard action masking applied at every step. Two
+rules are checked before the policy samples an action.
 
 \begin{enumerate}
   \item \textbf{DG masking:} all actions with $\DG_t = 1$ are disabled if
@@ -187,66 +297,45 @@ Two rules are checked before the policy samples an action.
   mid-run shutdowns.
   \item \textbf{Order masking:} all non-zero order actions are disabled if
   a delivery is already pending, enforcing the single-outstanding-order
-  constraint.  Order quantities exceeding remaining tank headroom are also
+  constraint. Order quantities exceeding remaining tank headroom are also
   clipped.
 \end{enumerate}
 
 \texttt{MaskablePPO} applies the mask by setting infeasible logits to
 $-\infty$ before the softmax; the no-operation action is always feasible
-as a safe fallback.  Post-step physical clipping (SoC and inventory to
+as a safe fallback. Post-step physical clipping (SoC and inventory to
 their bounds) provides a numerical backstop and contributes a small
-penalty $\mu V_t$ to the reward.  No adaptive Lagrangian update was
-implemented; masking alone drove hard violations to zero across all
-evaluated conditions.
-
-\subsection{Reward function}
-
-The reward is a shaped, normalised scalar designed to penalise unreliability
-far more heavily than fuel cost:
-\[
-r_t =
--\alpha \dfrac{E_t^{\DG}}{\bar{D}}
--\beta  \dfrac{E_t^{\Grid}}{\bar{D}}
--\lambda \dfrac{U_t}{\bar{D}}
--\gamma_r\,\mathbb{I}\!\bigl[U_t>0 \wedge \Inv_t=0\bigr]
--\mu\,V_t,
-\]
-where $E_t^{\DG}$ is diesel energy consumed, $E_t^{\Grid}$ is grid energy
-drawn, $U_t$ is unmet load energy (kWh), $\mathbb{I}[\cdot]$ is a cliff penalty
-triggered by a stockout coinciding with an active load shortfall, and
-$V_t$ indicates a physical-clipping event.  The default coefficients are
-$\alpha=1.0$, $\beta=0.4$, $\lambda=100$, $\gamma_r=200$, $\mu=20$.
-This formulation prioritises service reliability over fuel efficiency,
-ensuring the learned policy strongly avoids stockouts and unmet load events
-even at the cost of higher diesel consumption.  Dividing all energy terms
-by $\bar{D}$ normalises the signal to a comparable scale across sites.
-The implemented reward is a shaped approximation of the economic cost
-objective defined in Chapter~\ref{chap:problem}; monetary cost components
-such as ordering cost, holding cost, and carbon cost are not explicitly
-represented.
+penalty term to the reward (Section~\ref{sec:reward_design}). No adaptive
+Lagrangian update was implemented; masking alone drove hard violations to
+zero across all evaluated conditions (verified in
+Chapter~\ref{chap:results}).
 
 \subsection{Agent architecture and training}
 
 RLInv uses \texttt{MaskablePPO} with a flat MLP $[256,\,256]$ policy.
 Training used four parallel \texttt{SubprocVecEnv} environments for
-400{,}000 timesteps per seed across three seeds (42, 123, 777).  Three
-independent seeds were used to quantify training variability while remaining
-feasible under the available CPU training budget.  A custom
-evaluation callback synchronised \texttt{VecNormalize} statistics between
-the training and evaluation environments before each validation pass,
-preventing observation-scale mismatch.  Training inventory was fixed at
-$0.6\,C^{\Tank}$ to reduce early-episode variance; evaluation randomises
-initial inventory over $[0.3,\,0.9]\,C^{\Tank}$.
+400{,}000 timesteps per seed. Ten independent training seeds were used
+to reduce sensitivity to stochastic policy optimisation and to enable
+paired statistical comparisons across identical site--scenario
+combinations: (42, 123, 777, 7, 13, 21, 99, 314, 500, 999). The first
+three (42, 123, 777) were retained from an earlier pilot phase and the
+remaining seven were added to increase statistical power for the
+seed-level paired comparisons reported in Chapter~\ref{chap:results}. A custom evaluation callback synchronised
+\texttt{VecNormalize} statistics between the training and evaluation
+environments before each validation pass, preventing observation-scale
+mismatch. Training inventory was randomised over $[0.20,\,0.90]\,C^{\Tank}$
+so that the policy learns to manage from any starting inventory level;
+evaluation randomises initial inventory over $[0.3,\,0.9]\,C^{\Tank}$.
 
 A convergence check extended training to 560{,}000 steps on three
-representative sites (1, 5, and~7) using seed~42.  Sites~1 and~7
-showed no change in evaluation reward beyond 400{,}000 steps,
-indicating early convergence.  Site~5 exhibited high reward
-variance across independent runs regardless of step count,
-consistent with its classification as a grid-constrained site.
-The 400{,}000-step checkpoint was therefore retained for all sites.
+representative sites (1, 5, and~7) using seed~42. Sites~1 and~7 showed no
+change in evaluation reward beyond 400{,}000 steps, indicating early
+convergence. Site~5 exhibited high reward variance across independent
+runs regardless of step count, consistent with its classification as a
+grid-constrained site. The 400{,}000-step checkpoint was therefore
+retained for all sites and seeds.
 
-Table~\ref{tab:hyperparams} lists all hyperparameters.
+Table~\ref{tab:hyperparams} lists all training hyperparameters.
 
 \begin{table}[htb]
 \centering
@@ -263,16 +352,86 @@ Total timesteps        & 400{,}000 per seed                 & $\approx$\,2\,h on
 Learning rate          & $3\times10^{-4}$ (linear decay)    & PPO standard \\
 Clip ratio $\epsilon$  & 0.2                                & PPO standard \\
 Entropy coefficient    & 0.01                               & Encourage exploration \\
-Discount $\gamma$      & 0.99                               & Effective horizon $\approx$\,100\,h covers typical delivery lead times while reducing return variance \\
+Discount $\gamma$      & 0.99                               & Effective horizon $\approx$\,100\,h; see Chapter~\ref{chap:results} for a discount-factor sensitivity check against $\gamma=0.995$ \\
 GAE $\lambda$          & 0.95                               & Bias--variance balance \\
 $n_{\text{steps}}$     & 2048                               & Rollout buffer length \\
 Batch size             & 256                                & CPU-friendly mini-batch \\
 $n_{\text{epochs}}$    & 10                                 & PPO inner loop \\
 Parallel environments  & 4 (\texttt{SubprocVecEnv})         & CPU parallelism; reduced from 8 due to OS process handle limits \\
-Seeds                  & 42, 123, 777                       & Mean $\pm$ std reported \\
+Seeds                  & 42, 123, 777, 7, 13, 21, 99, 314, 500, 999 & Mean $\pm$ 95\% CI over 10 seeds reported throughout Chapter~\ref{chap:results} \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+
+% ============================================================
+\section{Reward Design}
+\label{sec:reward_design}
+% ============================================================
+
+The reward is a shaped, normalised scalar designed to penalise
+unreliability far more heavily than fuel cost:
+\[
+r_t =
+-\alpha \dfrac{E_t^{\DG}}{\bar{D}}
+-\beta  \dfrac{E_t^{\Grid}}{\bar{D}}
+-\lambda \dfrac{U_t}{\bar{D}}
+-\gamma_r\,\mathbb{I}\!\bigl[U_t>0 \wedge \Inv_t=0\bigr]
+-\mu\,V_t,
+\]
+where $E_t^{\DG}$ is diesel energy consumed, $E_t^{\Grid}$ is grid energy
+drawn, $U_t$ is unmet load energy (kWh), $\mathbb{I}[\cdot]$ is a cliff
+penalty triggered by a stockout coinciding with an active load shortfall,
+and $V_t$ indicates a physical-clipping event (SoC or inventory bound
+violation caught by the post-step numerical backstop). Dividing all
+energy terms by the site mean hourly load $\bar{D}$ normalises the signal
+to a comparable scale across sites of different size. The implemented
+reward is a shaped approximation of the economic cost objective defined
+in Chapter~\ref{chap:problem}; monetary cost components such as ordering
+cost, holding cost, and carbon cost are not explicitly represented.
+
+\textbf{Note on notation.} The stockout-cliff coefficient $\gamma_r$ is
+unrelated to the PPO discount factor $\gamma$ used elsewhere in this
+chapter; the subscript distinguishes them.
+
+\subsection{Coefficient values and justification}
+
+The default coefficients are $\alpha=1.0$, $\beta=0.4$, $\lambda=100$,
+$\gamma_r=200$, $\mu=20$. Each is chosen for a specific, stated reason
+rather than by unconstrained tuning:
+
+\begin{itemize}
+\item \textbf{$\lambda = 100$} (unmet-load penalty) is set roughly 12
+times larger than the diesel-cost weight $\alpha$, reflecting that one
+kWh of unserved telecom load is far more costly operationally than one
+kWh of diesel-generated energy at the most constrained site in the
+dataset (site~5). This large ratio is the mechanism by which the reward
+prioritises reliability over fuel economy.
+\item \textbf{$\gamma_r = 200$} (stockout cliff) is set to exactly twice
+$\lambda$, reflecting that a stockout coinciding with unmet load is a
+qualitatively different failure mode from unmet load alone (a hard
+reliability failure, not merely a cost), and should be penalised more
+severely rather than merely proportionally.
+\item \textbf{$\beta = 0.4$} (grid-cost weight) reflects that grid
+electricity is cheaper than diesel per unit energy in typical Indian
+tariff structures, but is not free; a intermediate weight between zero
+and $\alpha$ avoids the policy treating grid draw as costless.
+\item \textbf{$\mu = 20$} (physical-violation penalty) is deliberately
+small: it is a numerical backstop for the rare event that hard masking
+still allows a boundary violation (e.g.\ through clipping), not a primary
+control lever. Its sensitivity is tested directly in
+Chapter~\ref{chap:results}, where $\mu$ varying by an order of magnitude
+either side of its default value produces the smallest change in EENS of
+any coefficient tested --- confirming that masking, not the penalty term,
+is what actually drives constraint satisfaction.
+\end{itemize}
+
+These are engineering judgements about relative priority, not values
+fitted to data; Chapter~\ref{chap:results} reports a systematic
+sensitivity analysis in which each coefficient is independently varied
+across a wide range (including a 20-fold range for $\lambda$) to confirm
+that the primary comparison in this thesis is not an artefact of this
+particular weighting.
 
 
 % ============================================================
@@ -280,10 +439,9 @@ Seeds                  & 42, 123, 777                       & Mean $\pm$ std rep
 \label{sec:comparison_policies}
 % ============================================================
 
-Six policies are evaluated.  The two principal architectures, RLInv and
-TrackB, differ fundamentally in how they couple the ordering and dispatch
-decisions; Figure~\ref{fig:rlinv_trackb} illustrates this structural
-contrast.
+Six primary policies and three targeted ablations are evaluated.
+Table~\ref{tab:ablation-design} maps every policy to the architectural
+question it addresses.
 
 \begin{figure}[htbp]
 \centering
@@ -293,7 +451,6 @@ contrast.
   arrow/.style={->, thick},
   label/.style={font=\small\bfseries}
 ]
-%% ---- RLInv row (y = 0) ----
 \node[label] at (3.4, 0.85) {Unified Control (RLInv)};
 \node[box] (state1) at (0, 0)
   {System State\\{\scriptsize SoC, Inv, PV, Load, Grid}};
@@ -303,121 +460,208 @@ contrast.
   {Actions\\{\scriptsize DG ON/OFF}\\{\scriptsize Diesel Order}};
 \draw[arrow] (state1) -- (agent1);
 \draw[arrow] (agent1) -- (acts1);
-%% ---- dividing rule ----
 \draw[dashed, gray] (-1.6, -1.05) -- (10.0, -1.05);
 
-%% ---- TrackB rows ----
 \node[label] at (3.4, -1.55) {Hierarchical Control (TrackB)};
-
 \node[box] (state2) at (0, -2.5)
   {System State\\{\scriptsize SoC, Inv, PV, Load, Grid}};
-
 \node[box] (ss)       at (4.2, -2.0) {$(s,S)$ Inventory Rule};
 \node[box] (order2)   at (8.4, -2.0) {Order Decision};
-
 \node[box] (dispatch) at (4.2, -3.4) {PPO Dispatch Agent};
 \node[box] (dg2)      at (8.4, -3.4) {DG Decision};
-
 \draw[arrow] (state2.east) -- ++(0.4,0) |- (ss.west);
 \draw[arrow] (state2.east) -- ++(0.4,0) |- (dispatch.west);
 \draw[arrow] (ss)       -- (order2);
 \draw[arrow] (dispatch) -- (dg2);
-
 \end{tikzpicture}
-\caption{Structural comparison of the two control architectures. RLInv
-jointly optimises generator dispatch and diesel ordering within a single
-reinforcement-learning policy. TrackB separates the two decisions: a
-classical $(s,S)$ rule handles ordering while a PPO agent handles dispatch.
-The experiment tests whether joint optimisation (RLInv) delivers a
-measurable reliability improvement over hierarchical decomposition (TrackB).
-Ablation A6 (not shown) uses the same hierarchical ordering structure as
-TrackB but replaces the dispatch controller with an RL policy operating
-over a reduced \texttt{Discrete(2)} action space.}
+\caption{Structural comparison of the two principal control
+architectures. RLInv jointly optimises generator dispatch and diesel
+ordering within a single reinforcement-learning policy. TrackB separates
+the two decisions: a classical $(s,S)$ rule handles ordering while a PPO
+agent handles dispatch.}
 \label{fig:rlinv_trackb}
 \end{figure}
 
 \textbf{RLInv} is the proposed unified controller: \texttt{MaskablePPO}
-learns to select generator commitment and diesel order quantity jointly at
-each step, with all three masking rules active.
+learns to select generator commitment and diesel order quantity jointly
+at each step, with all masking rules active.
 
 \textbf{TrackB} is the hierarchical comparison: a calibrated $(s,S)$
-inventory rule determines ordering (reorder point = mean daily consumption
-$\times$ mean lead time $+$ 48-h safety buffer; order-up-to level =
-$0.85\,C^{\Tank}$), while a PPO dispatch agent with the same MLP
-architecture as RLInv controls the generator.  Using an identical network
-ensures that performance differences reflect control structure rather than
-network capacity.
+inventory rule determines ordering, while a PPO dispatch agent controls
+the generator using the same hidden-layer architecture ($[256,\,256]$
+MLP) as RLInv. The dispatch agent's input is a reduced 6-dimensional
+observation (state-of-charge, PV, load, grid, and the two cyclic
+hour-of-day features only; inventory-related dimensions are withheld
+since ordering is handled externally), so "identical network" refers to
+matched hidden-layer capacity, not an identical input layer; this keeps
+the comparison focused on control structure rather than a confound from
+network size.
 
-\textbf{B0} is a rule-based heuristic: threshold dispatch with fixed-interval
-ordering, requiring no training.  \textbf{B1} replaces fixed ordering in B0
-with the calibrated $(s,S)$ rule.  \textbf{A7} is vanilla PPO trained without
-action masking, isolating the contribution of the safety mechanism; it is
-evaluated primarily on sites exhibiting non-trivial reliability challenges,
-where constraint violations are most likely to occur.
-\textbf{A5} is RLInv with inventory observations zeroed via a
-\texttt{NoInvObsWrapper}, isolating the contribution of explicit inventory
-awareness in the state.
+\begin{quote}
+\textbf{Implementation Note.} The reorder point covers estimated mean
+consumption over the expected delivery lead time, subject to lower and
+upper clipping limits:
+$s_{\mathrm{norm}} = \mathrm{clip}(k_s \cdot \bar{D} \cdot \mathbb{E}[L]
+\,/\, C^{\Tank},\, 0.05,\,0.95)$ with safety multiplier $k_s=1$, and
+order-up-to level $S_{\mathrm{norm}} = \mathrm{clip}(0.85,\,
+s_{\mathrm{norm}}+0.10,\,0.95)$. This calibration is shared by B1,
+TrackB, A6, MPC, and Oracle-MPC.
+\end{quote}
 
-\textbf{A6} isolates the contribution of the learned ordering policy.
-In this variant the RL agent controls only generator commitment under a
-reduced \texttt{Discrete(2)} action space, while diesel ordering is handled
-by the same calibrated $(s,S)$ rule used in TrackB.  The observation space,
-reward function, and environment dynamics remain identical to RLInv.
-Because the dispatch policy is re-learned under the smaller action space,
-A6 provides a cleaner ordering ablation than TrackB, although the comparison
-is not perfectly controlled.
+\textbf{MPC} pairs the same $(s,S)$ ordering rule with a model-predictive
+dispatch controller: a receding-horizon MILP (solved via HiGHS,
+\texttt{scipy.optimize.milp}) re-optimised at every step over a
+24-hour planning horizon, using a persistence forecast (the current
+observation repeated across the horizon). A 24-hour horizon captures the
+daily solar and load cycle while requiring only 24 binary dispatch
+variables, keeping the MILP computationally small. MPC's battery--DG
+co-optimisation within the MILP is a mild optimistic bias relative to
+RLInv's greedy priority-rule battery dispatch, since the solver can plan
+battery and generator jointly where the simulator's own dispatch cannot;
+this is a documented, deliberate advantage given to the baseline. Because
+the 24-hour horizon cannot see a delivery whose expected arrival lies
+beyond it, MPC's expected-delivery estimate is undefined under the
+Extreme scenario (mean lead time 336\,h, far beyond the horizon) --- the
+central structural limitation this comparison is designed to expose. A
+third variant using a learned 24-hour forecasting module in place of the
+persistence forecast was also implemented and evaluated during
+development; it is not part of the primary comparison, as it did not
+alter the qualitative conclusions drawn from the persistence-forecast
+MPC baseline.
 
-Table~\ref{tab:ablation-design} maps every policy to the hypothesis it tests.
-The B0\,$\to$\,B1\,$\to$\,TrackB\,$\to$\,RLInv ladder isolates the contribution
-of each architectural layer in turn: intelligent ordering, learned dispatch,
-and joint co-optimisation.  Ablation A6 complements this ladder by holding
-dispatch architecture constant while substituting classical ordering,
-providing a cleaner test of the ordering contribution than TrackB alone.
+\textbf{Oracle-MPC} is identical to MPC except that its forecast is the
+\emph{actual} realised future load and solar trace (perfect information)
+rather than a persistence estimate, and its planning horizon extends to
+the full 360-step evaluation episode rather than 24 hours. It is not a
+deployable policy; it exists to answer a specific diagnostic question: if
+the gap between RLInv and TrackB/MPC were explained purely by better
+forecasting or better dispatch optimisation, RLInv should not be able to
+match or approach a policy with \emph{perfect} forecasting and dispatch.
+Since RLInv's ordering is still learned rather than fixed, a persisting
+RLInv--Oracle-MPC gap in either direction is informative about whether
+the remaining advantage is attributable to ordering rather than dispatch
+quality (Chapter~\ref{chap:results}).
+
+\textbf{B0} is a rule-based heuristic: a fixed-threshold inventory
+policy using uncalibrated inventory thresholds, paired with threshold
+dispatch, requiring no training. \textbf{B1} replaces B0's fixed
+thresholds with the same site-calibrated $(s,S)$ inventory policy used
+by TrackB, MPC, and Oracle-MPC; B0 and B1 share the same dispatch
+heuristic, differing only in the ordering rule. Concisely: B0 uses fixed
+inventory thresholds, B1 uses a site-calibrated $(s,S)$ inventory
+policy --- isolating the value of calibrated ordering specifically.
+
+\textbf{A7} is vanilla PPO trained without action masking, isolating the
+contribution of the masking safety mechanism.
+
+\textbf{A5} removes five logistics/inventory-related channels via a
+\texttt{NoInvObsWrapper}: inventory level ($\Inv_t$), pending-delivery
+flag, pending quantity, elapsed time since ordering ($\tau_t$), and the
+remaining delivery-time channel ($R_t$); the remaining six dimensions
+(SoC, PV, load, grid, and the two cyclic hour-of-day features) are
+unchanged. This isolates the contribution of explicit inventory and
+ordering-history awareness in the state.
+
+\textbf{A6} isolates the contribution of the learned ordering policy. In
+this variant the RL agent controls only generator commitment under a
+reduced \texttt{Discrete(2)} action space, while diesel ordering is
+handled by the same calibrated $(s,S)$ rule used in TrackB, MPC, and
+Oracle-MPC. The observation space, reward function, and environment
+dynamics remain identical to RLInv. Because the dispatch policy is
+re-learned under the smaller action space, A6 provides a cleaner ordering
+ablation than TrackB, which confounds ordering mechanism and dispatch
+architecture simultaneously; both comparisons are reported in
+Chapter~\ref{chap:results} for this reason.
 
 \begin{table}[htb]
 \centering
 \small
-\caption{Policies evaluated in the experimental campaign and the hypothesis
-each tests.}
+\caption{Policies evaluated in the experimental campaign, the question
+each answers, and the classical $(s,S)$ ordering rule shared across four
+of the six comparators.}
 \label{tab:ablation-design}
-\begin{tabular}{p{1.8cm}p{7.5cm}p{3.5cm}}
+\begin{tabular}{p{1.6cm}p{2.6cm}p{2.6cm}p{2.4cm}p{3.6cm}}
 \toprule
-\textbf{Label} & \textbf{Description} & \textbf{Hypothesis} \\
+\textbf{Label} & \textbf{Ordering} & \textbf{Dispatch} & \textbf{Forecast} & \textbf{Primary question} \\
 \midrule
-B0      & Threshold dispatch, fixed-interval ordering            & Baseline anchor \\
-B1      & Threshold dispatch, $(s,S)$ ordering                  & Ordering value (H1) \\
-A7      & Vanilla PPO, no action masking                        & Safety mechanisms (H2) \\
-TrackB  & $(s,S)$ ordering $+$ PPO dispatch                    & Decomposition vs.\ joint (H1) \\
-A5      & RLInv, inventory observations zeroed                  & Inventory state value (H3) \\
-A6      & RLInv dispatch only (\texttt{Discrete(2)}) $+$ $(s,S)$ ordering & Ordering value, cleaner H1 test \\
-RLInv   & Full proposed system                                  & Reference \\
+B0      & Fixed threshold (uncalibrated) & Threshold rule & --- & Baseline anchor \\
+B1      & $(s,S)$ rule          & Threshold rule       & --- & Value of intelligent ordering \\
+MPC     & $(s,S)$ rule          & MILP, $H{=}24$       & Persistence & Does optimal-but-myopic dispatch close the gap? \\
+Oracle-MPC & $(s,S)$ rule       & MILP, $H{=}360$      & Perfect & Upper bound given perfect information \\
+TrackB  & $(s,S)$ rule          & Learned (PPO)        & --- & Joint vs.\ hierarchical (H1, confounded) \\
+A6      & $(s,S)$ rule          & Learned (PPO, Discrete(2)) & --- & Joint vs.\ hierarchical (H1, cleaner) \\
+A7      & Learned (joint)       & Learned (PPO, no mask) & --- & Action masking (H2) \\
+A5      & Learned (joint, no inv.\ obs.) & Learned (PPO) & --- & Inventory observability (H3) \\
+RLInv   & Learned (joint)       & Learned (PPO)        & --- & Proposed system \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 
 % ============================================================
-\section{Evaluation Protocol}
+\section{Experimental Protocol}
 \label{sec:evaluation_protocol}
 % ============================================================
 
-All policies are evaluated on the 15-day test window (days~46--60) of each
-of the ten ITU/Zindi sites, with 30 episodes per seed and initial inventory
-randomised uniformly over $[0.3,\,0.9]\,C^{\Tank}$.  RLInv, TrackB, and A6
-are evaluated under both the normal ($p=1/24$) and delayed ($p=1/48$)
-logistics scenarios to enable direct cross-scenario comparison.  Baselines
-and the remaining ablations are evaluated under the normal scenario only.
+All nine policies are evaluated on the 15-day held-out test window (days
+46--60) of each of the ten ITU/Zindi sites, under all four delivery
+logistics scenarios (Normal, Delayed, Monsoon, Extreme; defined in
+Section~\ref{sec:env_impl}), with 10 episodes per seed and initial
+inventory randomised uniformly over $[0.3,\,0.9]\,C^{\Tank}$. This is a
+full factorial design: every policy is evaluated under every scenario at
+every site, rather than the scenario coverage being policy-specific.
+Table~\ref{tab:protocol_summary} summarises the evaluation grid at a
+glance.
 
-The primary metric is EENS (kWh per 30-day episode).  Sites with mean EENS
-exceeding 50\,kWh under at least one policy are classified as
-\emph{constrained} and receive focused statistical analysis; below this
-threshold all policies achieve near-zero EENS and cannot be meaningfully
-discriminated.  RLInv, TrackB, and A6 are evaluated under both the normal
-and delayed logistics scenarios to enable direct cross-scenario comparison;
-baselines and remaining ablations are evaluated under the normal scenario only.
-Statistical comparisons use seed-level means ($n=3$) as the
-unit of analysis; Welch's $t$-tests and Cohen's $d$ are reported alongside
-$p$-values to account for the small sample size.
+\begin{table}[htb]
+\centering
+\small
+\caption{Experimental protocol at a glance.}
+\label{tab:protocol_summary}
+\begin{tabular}{ll}
+\toprule
+\textbf{Item} & \textbf{Value} \\
+\midrule
+Sites                & 10 (all ITU/Zindi sites) \\
+Training seeds       & 10 (42, 123, 777, 7, 13, 21, 99, 314, 500, 999) \\
+Evaluation episodes  & 10 per seed \\
+Scenarios            & 4 (Normal, Delayed, Monsoon, Extreme) \\
+Policies evaluated   & 9 (B0, B1, MPC, Oracle-MPC, TrackB, A5, A6, A7, RLInv) \\
+Primary metric       & EENS (kWh per episode) \\
+Secondary metrics    & Diesel consumption, uptime, stockout events, orders placed \\
+Statistical unit     & Seed-level mean, paired across policies \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Statistical comparisons use the seed-level mean as the unit of analysis
+($n=10$ seeds per condition, or $n=100$ when pooling across all 10 sites
+$\times$ 10 seeds for the primary comparison). Hypothesis comparisons
+(H1, H2, H3) are assessed with a paired $t$-test on within-seed
+differences, since the same 10 seeds are evaluated under every policy
+(seed 42 under RLInv is matched against seed 42 under the comparator, not
+treated as an independent sample), with effect size reported as Cohen's
+$d_z$ (mean paired difference divided by the standard deviation of the
+paired differences). Because every policy was evaluated on identical
+site, scenario, and seed combinations, paired analysis provides greater
+statistical power than an independent-samples test by removing
+between-instance variability that is common to both policies being
+compared. A subset of three sites (site2, site5, site7) is
+additionally used for finer-grained robustness checks in
+Chapter~\ref{chap:results} where a smaller, more tractable evaluation
+grid is needed (e.g.\ reward and tank-capacity sensitivity sweeps); this
+three-site subset was selected for load/solar/outage diversity and is
+distinct from the site difficulty classification of
+Chapter~\ref{chap:datasets-setup}, where only site2 and site5 are
+classified Hard.
+
+Full numerical results, including the primary comparison, the three
+hypothesis tests, behavioural analysis, and all robustness checks
+(reward weighting, discount factor, tank capacity, delivery-distribution
+form, stochastic grid outages, and the RLInv-DA exploratory extension),
+are reported in Chapter~\ref{chap:results}. Although the configuration
+file retains an earlier default of 30 episodes per seed, all reported
+experiments used ten evaluation episodes per training seed.
 
 
 % ============================================================
@@ -426,41 +670,45 @@ $p$-values to account for the small sample size.
 % ============================================================
 
 Although the implementation follows the CMDP formulation of
-Chapter~\ref{chap:problem} closely, several practical simplifications were
-adopted to enable stable training within the available CPU budget.
-Table~\ref{tab:deviations} consolidates these points; each deviation was adopted for a
-specific practical reason and does not invalidate the empirical study, but
-defines the scope within which results should be interpreted.
+Chapter~\ref{chap:problem} closely, several practical simplifications
+were adopted to enable stable training within the available CPU budget.
+Table~\ref{tab:deviations} consolidates these points; each deviation was
+adopted for a specific practical reason and does not invalidate the
+empirical study, but defines the scope within which results should be
+interpreted.
 
 \begin{table}[htb]
 \centering
 \small
-\caption{Deviations between the formal CMDP (Chapter~3) and the implemented
-system.}
+\caption{Deviations between the formal CMDP (Chapter~\ref{chap:problem})
+and the implemented system.}
 \label{tab:deviations}
 \begin{tabular}{p{2.8cm}p{4.6cm}p{4.6cm}}
 \toprule
 \textbf{Aspect} & \textbf{Formal model} & \textbf{Implementation} \\
 \midrule
 Battery control
-  & $P_t^{\Bat}$ included in CMDP action space (Chapter~3)
+  & $P_t^{\Bat}$ included in CMDP action space
   & Fixed energy-priority rule; not an RL decision \\[4pt]
 Action space
-  & Hybrid continuous $+$ discrete
-  & Discrete 6-action encoding \\[4pt]
+  & Hybrid continuous $+$ discrete; order quantity a fixed litre value
+  & Discrete 6-action encoding; order quantity expressed as \{0, 30\%,
+    60\%\} of tank capacity rather than a fixed litre amount \\[4pt]
 Lead-time model
-  & Lognormal($\mu$\,=\,2.5\,days normal; 5.0\,days delayed), single scalar $\Pipe_t$
-  & Geometric distribution ($p$\,=\,1/24, mean 24\,h normal; $p$\,=\,1/48, mean 48\,h
-    delayed); flag\,+\,quantity pair. Shorter mean delays maintain adequate
-    training signal within the 30-day episode horizon. \\[4pt]
+  & Lognormal($\mu$\,=\,2.5\,days normal; 5.0\,days delayed), single
+    scalar $\Pipe_t$
+  & Geometric distribution across four scenarios (Normal 24\,h, Delayed
+    48\,h, Monsoon 72\,h, Extreme 336\,h); flag\,+\,quantity pair.
+    Lognormal is evaluated separately as a distributional-robustness
+    check in Chapter~\ref{chap:results}, not as the primary training
+    distribution. \\[4pt]
 Discount factor
   & $\gamma = 0.995$ (effective horizon $\approx$\,200\,h)
-  & $\gamma = 0.99$ (SB3 default; effective horizon $\approx$\,100\,h
-    covers typical delivery lead times while reducing
-    return variance during training) \\[4pt]
+  & $\gamma = 0.99$ (effective horizon $\approx$\,100\,h; sensitivity to
+    this choice is tested directly in Chapter~\ref{chap:results}) \\[4pt]
 Reward
   & Economic cost decomposition (monetary)
-  & Shaped normalised scalar \\[4pt]
+  & Shaped normalised scalar (Section~\ref{sec:reward_design}) \\[4pt]
 Safety mechanisms
   & Masking $+$ recovery $+$ Lagrangian
   & Masking $+$ physical clipping only \\[4pt]
@@ -469,8 +717,8 @@ Neural architecture
   & Flat MLP $[256,\,256]$, ReLU \\[4pt]
 Training budget
   & 576{,}000 steps (script default)
-  & 400{,}000 steps (final run); convergence check extended
-    training to 560{,}000 steps confirming plateau \\
+  & 400{,}000 steps (final run); convergence check extended training to
+    560{,}000 steps confirming plateau \\
 \bottomrule
 \end{tabular}
 \end{table}
