@@ -786,3 +786,49 @@ Training budget
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Diesel supply-chain scope and assumptions}
+\label{sec:supply_chain_scope}
+
+This study models the diesel supply chain using the following
+assumptions and scope boundaries, consolidated here though otherwise
+stated individually alongside the relevant formulation and
+implementation details (Chapter~\ref{chap:problem},
+Table~\ref{tab:deviations} above).
+
+\textbf{Single vendor, single outstanding order.} The simulator models
+one delivery pipeline per site with at most one order in transit at a
+time; multi-vendor sourcing, vendor selection, and contractual or
+pricing considerations are not represented. This keeps the pending-order
+state a two-scalar quantity (Section~\ref{sec:telecom_env}) rather than
+requiring a general queue.
+
+\textbf{Delivery delay as a stochastic process, not a routing problem.}
+Delay is modelled as a per-site geometric (or, for robustness,
+lognormal/Weibull) random process calibrated to a mean lead time, not as
+the output of an explicit vehicle-routing, road-network, or
+depot-inventory simulation. This is a deliberate abstraction: it
+represents the \emph{effect} of upstream logistics uncertainty on a
+single tower's replenishment decisions without requiring a full
+logistics network model, which would require a fundamentally different
+problem formulation centred on inventory-routing optimisation rather
+than single-site inventory-aware control.
+
+\textbf{Single-tower scope.} Each site is optimised independently; no
+shared supplier capacity, delivery-slot competition, or fleet-level
+coordination across towers is modelled (Chapter~\ref{chap:conclusion}
+discusses a multi-agent extension as future work).
+
+\textbf{No real vendor delivery data.} The ITU/Zindi dataset does not
+record delivery events, so every delay distribution used in this thesis
+--- including the lognormal and Weibull robustness checks
+(Chapter~\ref{chap:results}) --- is a parametric modelling choice, not
+one fitted to observed logistics records. This is stated here as a
+scope boundary, not revisited as a limitation each time the delay model
+is used elsewhere in this thesis.
+
+The RLInv-DA extension (Chapter~\ref{chap:results}) addresses a related
+but distinct question --- whether a persistent, autocorrelated supplier
+condition (rather than a fully independent-order abstraction) is
+worth tracking explicitly --- and its own scope is documented alongside
+that result rather than repeated here.

@@ -64,6 +64,21 @@ earlier chapter draft.
   real benchmark log exists). **Oracle-MPC horizon = 360 steps** (full
   episode, receding), perfect-information forecast.
 
+## Reviewer comment closure status (final, agreed)
+| Reviewer | Status | Where Addressed |
+|---|---|---|
+| R1 | Fully addressed | Results (primary comparison, lead-time sensitivity, behavioural analysis) |
+| R2 | Fully addressed | Entire Results chapter |
+| R3 | Fully addressed | Methodology (coefficient rationale) + Results (reward sensitivity) |
+| R4 | Fully addressed | Rebuilt figures throughout |
+| R5 | Fully addressed | Results + Discussion |
+| R6 | Fully addressed | Results (Lognormal, Weibull) + Discussion |
+| R7 | Fully addressed | Captions, labels, tables |
+| R8 | Fully addressed | Methodology baseline table + consistent terminology |
+| R9 | Fully addressed (within stated modelling scope) | Methodology §4.7 (explicit supply-chain assumptions), Results (lead-time and RLInv-DA analyses), Discussion/Future Work (richer logistics and multi-agent extensions) |
+| R10 | Fully addressed | Results (RLInv-DA) + Discussion/Conclusion |
+| R11 | Fully addressed | Whole thesis, canonical statistics |
+
 ## Open items carried forward (not yet resolved — do not silently resolve
 ## in Discussion/Conclusion; flag if touched)
 1. **Appendix relocation** — Experimental Execution was compressed inline
