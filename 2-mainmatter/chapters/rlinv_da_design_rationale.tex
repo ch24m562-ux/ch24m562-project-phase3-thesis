@@ -1,0 +1,125 @@
+% rlinv_da_design_rationale.tex
+% Research workflow diagram for RLInv-DA exploratory extension (Comments #9/#10)
+% Compile with: pdflatex rlinv_da_design_rationale.tex
+% Or include in thesis chapter with \input{rlinv_da_design_rationale.tex}
+%
+% Required packages (add to thesis preamble if not already present):
+%   \usepackage{tikz}
+%   \usetikzlibrary{arrows.meta, shapes.geometric, positioning, fit, backgrounds}
+%   \usepackage{xcolor}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance = 5mm and 0mm,
+    % Box styles
+    reviewer/.style = {
+        rectangle, rounded corners=3pt,
+        draw=black!60, fill=gray!10,
+        text width=62mm, align=center,
+        font=\small\itshape, inner sep=4pt
+    },
+    problem/.style = {
+        rectangle, rounded corners=3pt,
+        draw=orange!70, fill=orange!8,
+        text width=62mm, align=center,
+        font=\small, inner sep=4pt
+    },
+    decision/.style = {
+        rectangle, rounded corners=3pt,
+        draw=blue!50, fill=blue!6,
+        text width=62mm, align=center,
+        font=\small, inner sep=4pt
+    },
+    result/.style = {
+        rectangle, rounded corners=3pt,
+        draw=teal!60, fill=teal!6,
+        text width=62mm, align=center,
+        font=\small, inner sep=4pt
+    },
+    conclusion/.style = {
+        rectangle, rounded corners=3pt,
+        draw=green!50!black, fill=green!6,
+        text width=62mm, align=center,
+        font=\small\bfseries, inner sep=4pt
+    },
+    evidence/.style = {
+        rectangle, rounded corners=3pt,
+        draw=purple!50, fill=purple!5,
+        text width=62mm, align=left,
+        font=\small, inner sep=5pt
+    },
+    % Arrow style
+    arr/.style = {-{Stealth[length=5pt]}, thick, gray!70}
+]
+
+% Nodes
+\node[reviewer] (comment)
+    {Reviewer Comments \#9 / \#10\\[2pt]
+     \textit{``Track delivery delays; model a more realistic supply chain''}};
+
+\node[problem, below=of comment] (iid)
+    {Original environment: i.i.d.\ geometric delivery times\\[2pt]
+     \textrightarrow\ Past delays carry no predictive information};
+
+\node[decision, below=of iid] (regime)
+    {\textbf{Comment \#9 response:} Two-state Markov supplier\\[2pt]
+     Normal $\leftrightarrow$ Disrupted (persistent disruptions)\\
+     Disrupted mean $= 2\times$ normal mean};
+
+\node[problem, below=of regime] (informative)
+    {Past realised delays now contain predictive information\\[2pt]
+     \textrightarrow\ EWMA estimation is scientifically motivated};
+
+\node[decision, below=of informative] (ewma)
+    {\textbf{Comment \#10 response:} EWMA lead-time estimator\\[2pt]
+     $\hat{L}_{t} = \alpha \cdot L^{\text{realised}}_t + (1-\alpha)\cdot\hat{L}_{t-1}$, \quad $\alpha = 0.3$\\
+     No future leakage; uses only past observations};
+
+\node[decision, below=of ewma] (rlinvda)
+    {\textbf{RLInv-DA:} Base observation space $+$ EWMA estimate\\[2pt]
+     Both \textit{Base-regime} and \textit{EWMA-aware} retrained\\
+     under same supplier model (fair ablation)};
+
+\node[result, below=of rlinvda] (eval)
+    {\textbf{Evaluation}\\[2pt]
+     Performance: 720 episodes (3 sites $\times$ 3 seeds $\times$ 4 scenarios)\\
+     Behaviour: 72 matched trace episodes\\
+     Diagnostics: formula verified, regime confirmed, signal available};
+
+\node[evidence, below=of eval] (evidence)
+    {\textbf{Evidence}\\[3pt]
+     {\color{green!50!black}$\checkmark$} EWMA formula correct ($\alpha = 0.3$, all updates verified)\\
+     {\color{green!50!black}$\checkmark$} Supplier regime active (transitions confirmed)\\
+     {\color{green!50!black}$\checkmark$} Bidirectional adaptation (up and down)\\
+     {\color{green!50!black}$\checkmark$} Only modest behavioural change (+9.4\% inter-order interval, Monsoon)\\
+     {\color{red!60!black}$\times$} No consistent EENS improvement (5/36 better, 11/36 worse)};
+
+\node[conclusion, below=of evidence] (conclusion)
+    {Conclusion\\[2pt]
+     The existing RLInv observation space (inventory, pipeline,\\
+     pending orders) was already sufficiently informative.\\
+     EWMA did not provide additional useful signal\\
+     under the evaluated supplier-regime model.};
+
+% Arrows
+\draw[arr] (comment)     -- (iid);
+\draw[arr] (iid)         -- (regime);
+\draw[arr] (regime)      -- (informative);
+\draw[arr] (informative) -- (ewma);
+\draw[arr] (ewma)        -- (rlinvda);
+\draw[arr] (rlinvda)     -- (eval);
+\draw[arr] (eval)        -- (evidence);
+\draw[arr] (evidence)    -- (conclusion);
+
+\end{tikzpicture}
+
+\caption{Research design rationale for the RLInv-DA exploratory extension
+(Reviewer Comments~\#9 and~\#10). The diagram shows the reasoning chain
+from reviewer feedback through experimental design to conclusion. The
+neutral result is scientifically valid because it is explained by
+information redundancy: the existing inventory and pipeline state
+representation already captures the information that EWMA-based
+delay estimation provides under the evaluated supplier-regime model.}
+\label{fig:rlinv_da_rationale}
+\end{figure}
