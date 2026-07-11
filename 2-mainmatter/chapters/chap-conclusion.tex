@@ -1,153 +1,225 @@
-% filename: chap-conclusion-FINAL-v2.tex
-\chapter{Conclusion and Future Work}
+% filename: chap-conclusion-v3.tex
+% Complete Phase 3 rewrite. Every number below is drawn directly from the
+% frozen chap-results.tex / THESIS_FREEZE_v1.md, not carried over from the
+% Phase 2 draft this replaces. That draft framed most of Phase 3 (10 seeds,
+% 4 scenarios, MPC/Oracle-MPC comparison, cross-site evaluation) as future
+% work still to be done; all of it is now complete and reported here.
+\chapter{Discussion and Conclusion}
 \label{chap:conclusion}
-\setlength{\emergencystretch}{1.5em}   % prevents right-margin overflow in this chapter
+\setlength{\emergencystretch}{1.5em}
+
+Chapter~\ref{chap:results} reported what the experimental evidence
+shows. This chapter discusses what it means: which design choices the
+evidence actually supports, why the scenario-dependent and null results
+occurred rather than the uniformly positive result originally
+hypothesised, what this thesis contributes, its limitations, and the
+research directions that follow.
 
 % ============================================================
 \section{Summary of the Work}
 \label{sec:conclusion_summary}
 % ============================================================
 
-This thesis investigated whether a unified reinforcement learning agent,
-jointly optimising energy dispatch and diesel inventory ordering, can
-improve the operational reliability of off-grid and weak-grid telecom
-base stations relative to decoupled classical approaches.  The work was
-motivated by a practical gap in the literature: while prior work on
-RL-based energy management of remote base stations routinely models
-battery dispatch and diesel generator scheduling, it consistently omits
-the upstream supply chain decision --- when and how much diesel to order
---- despite this being a primary cause of service interruption in
-fuel-constrained deployments.
+This thesis investigated whether a unified reinforcement learning
+agent, jointly optimising energy dispatch and diesel inventory
+ordering, improves the operational reliability of off-grid and
+weak-grid telecom base stations relative to decoupled classical and
+optimisation-based approaches. The gap motivating this work is
+practical: prior RL-based energy management for remote base stations
+routinely models battery dispatch and generator scheduling but omits
+the upstream replenishment decision --- when and how much diesel to
+order --- despite this being a primary driver of service interruption
+in fuel-constrained deployments.
 
-The study framed this gap as a constrained Markov decision process
-(CMDP) in which a single policy controls diesel generator on/off state
-and periodic diesel order quantity.  Battery dispatch is determined by
-an internal environment rule rather than a direct RL action.  The
-inventory pipeline --- litres of diesel in transit under stochastic
-lead times --- was incorporated as an explicit state variable, enabling
-the agent to anticipate impending stockouts and adjust both dispatch
-conservatism and order timing accordingly.  This formulation, denoted
-\emph{RLInv}, was trained using Proximal Policy Optimisation (PPO)
-with action masking to enforce hard feasibility constraints, together
-with a fixed penalty term on soft constraint violations during training.
-
-The thesis also implemented a hierarchical decomposition baseline
-(TrackB) in which diesel ordering is governed by a classical
-$(s,S)$ inventory policy and only dispatch is learned by RL.  This
-directly addressed the timescale decomposition critique raised in the
-Phase-I review: the empirical comparison between RLInv and TrackB
-constitutes a direct test of whether joint optimisation provides
-measurable benefit over principled decomposition.
-
-All experiments used the ITU~2024 Smart Energy Scheduling dataset
-(ten remote base station sites, 60~days each, hourly resolution),
-with a synthetic lead-time overlay applied only to the in-transit
-diesel state variable~$\mathrm{Pipe}_t$, which is not present in
-the original dataset.  Three pre-registered hypotheses were tested
-across a structured ablation study of eight policy variants.
+The problem was framed as a constrained Markov decision process in
+which a single policy (RLInv) controls generator commitment and diesel
+order quantity jointly, with battery dispatch handled by a fixed
+priority rule and an 11-dimensional observation vector including
+explicit inventory and pipeline state (Chapter~\ref{chap:problem}).
+RLInv was evaluated against eight comparator policies spanning
+rule-based, hierarchical-RL, and optimisation-based approaches ---
+including, notably, a receding-horizon MPC baseline and a perfect-information
+Oracle-MPC upper bound, added specifically to distinguish whether any
+observed advantage reflects better \emph{ordering} or merely better
+\emph{dispatch} (Chapter~\ref{chap:methodology}). The final campaign
+evaluated all nine core policies across 10 ITU/Zindi sites, 10
+independent training seeds, and four delivery-logistics scenarios of
+increasing severity (Normal, Delayed, Monsoon, Extreme), using paired
+seed-level statistical comparisons throughout
+(Chapter~\ref{chap:experimental-execution}).
 
 % ============================================================
-\section{Key Results and Contributions}
+\section{Key Results and Discussion}
 \label{sec:conclusion_results}
 % ============================================================
 
-\subsection{Principal Empirical Findings}
+\subsection{What the primary comparison shows}
 
-The central empirical finding is that RLInv achieves a mean
-Expected Energy Not Served (EENS) of $488.5 \pm 92.4$\,kWh per
-episode on constrained sites under normal logistics, compared to
-$730.9 \pm 14.0$\,kWh for both the hierarchical RL baseline (TrackB)
-and the fixed-ordering ablation (A6).  Relative to RLInv, comparator
-EENS for both baselines is 49.6\% higher.  This difference is
-statistically significant ($p=0.042$, Cohen's $d=3.67$, Welch's
-$t$-test, $n=3$ seeds).
+Across the evaluated scenarios, RLInv consistently ranks among the
+best-performing policies and achieves the lowest mean EENS in three of
+the four representative logistics scenarios (Normal, Delayed, Extreme),
+remaining competitive with the best classical baseline under Monsoon.
+Critically, this advantage is not explained by superior
+dispatch alone: a rolling-horizon MPC baseline with a classical
+ordering rule performs no better than the simplest rule-based ordering
+policy, and the gap to Oracle-MPC --- which has access to \emph{perfect}
+future information for both forecasting and dispatch --- does not
+shrink under increasing logistics stress and is in fact largest under
+Monsoon. Taken together, this indicates that RLInv's advantage derives
+substantially from the ordering decision, not from a forecasting or
+dispatch capability that a sufficiently well-informed classical
+controller could match. The advantage is also not achieved through
+disproportionate fuel use: RLInv consumes only 3.6\% more diesel than
+the best classical baseline (205.7 vs.\ 198.5\,kWh), consistent with a
+genuine operational trade-off rather than an inflated comparison.
 
-Three hypotheses were evaluated:
+Read together, the Oracle-MPC comparison and the mechanism results
+that follow point to a single underlying message. RLInv's contribution
+is not that reinforcement learning is universally better than classical
+optimisation --- Oracle-MPC, MPC, and the classical $(s,S)$ rule remain
+strong references throughout. It is that joint optimisation of
+replenishment and dispatch becomes valuable specifically under
+uncertainty that classical rule-based coordination cannot easily
+represent, and that this value is conditional on the logistics regime
+rather than unconditional.
 
-\sloppy
-\begin{description}
-  \item[H1 (Joint ordering).] \emph{Supported} on constrained sites
-  under normal logistics.  The principal performance difference arises
-  from the ordering mechanism rather than the dispatch architecture:
-  A6 and TrackB produce numerically identical EENS ($730.9$\,kWh,
-  $p=1.0$), confirming that dispatch policy architecture is not the
-  determining factor once ordering is fixed.
+\subsection{Why the mechanism results are scenario-dependent, not uniform}
 
-  \item[H2 (Action masking).] \emph{Partially supported.}  Removing
-  masking (A7) produced a between-seed standard deviation of
-  $358.9$\,kWh versus $92.4$\,kWh for RLInv, consistent with
-  substantially less stable outcomes across training runs.  No hard
-  feasibility violations were recorded at evaluation for either
-  policy, suggesting masking's primary benefit is training
-  consistency rather than deployment safety enforcement.  The mean
-  EENS difference was not statistically significant ($p=0.525$,
-  $d=0.61$) at $n=3$ seeds.
+The three pre-registered hypotheses were tested through paired,
+seed-level ablations rather than a single aggregate comparison, and the
+honest answer in each case is more nuanced than a simple confirmed/rejected
+verdict.
 
-  \item[H3 (Inventory observation).] \emph{Directionally supported}
-  under normal logistics: A5 exhibits 15.6\% higher EENS than RLInv
-  ($p=0.429$, $d=0.72$), but the result is \emph{not statistically
-  conclusive} at $n=3$ seeds.  Under delayed logistics, the benefit
-  disappears and slightly reverses ($-2.2\%$, $p=0.398$), indicating
-  that the effect is distribution-specific.
-\end{description}
-\fussy
+\textbf{Joint replenishment and dispatch learning (H1).} The cleaner
+test (RLInv vs.\ A6, dispatch architecture held constant) shows a
+significant RLInv advantage under Normal and Extreme logistics, no
+difference under Delayed, and a result that nominally favours the
+classical-ordering comparator under Monsoon. This is not the uniform
+"joint learning always wins" result originally anticipated. Contrary to
+the original hypothesis, the paired Phase 3 analysis shows that the
+benefit of joint replenishment learning is scenario-dependent rather
+than universal; this finding illustrates the value of large-scale
+replication, which refined the original interpretation obtained from
+the earlier pilot study. The most
+defensible interpretation is that joint optimisation helps specifically
+when the logistics regime is either mild enough that anticipatory
+ordering has room to matter, or severe enough that classical
+heuristics under-react; at intermediate stress (Monsoon), a
+well-calibrated classical rule is difficult to improve on.
 
-The most important secondary finding concerns robustness to logistics
-stress.  Under delayed delivery ($\mu=48$\,h lead time), RLInv's EENS
-increases by $+596$\,kWh ($+122\%$) --- the largest degradation of any
-policy evaluated.  By contrast, A6 and TrackB degrade by only
-$+323$\,kWh ($+44\%$), while B0 degrades by a similar amount.  The
-$(s,S)$ safety stock therefore provides structural robustness to
-lead-time uncertainty that the RL agent does not learn from
-single-scenario training.  This finding is the primary motivation
-for multi-scenario training in Phase~III.
+\textbf{Action masking (H2).} Holding the ordering mechanism fixed
+(A6 vs.\ TrackB), masking produces a large, highly significant effect,
+but only under Monsoon and Extreme --- conditions the masked and
+unmasked dispatch policies were never trained under. This is best
+understood as an out-of-distribution robustness effect: masking
+constrains exploration to the feasible action subspace during
+training, producing a dispatch policy that generalises more reliably
+to logistics conditions harsher than anything seen in training.
+Separately, when ordering is already jointly learned (RLInv vs.\ A7),
+masking has no measurable effect on mean EENS at any scenario ---
+masking's benefit is conditional on externally managed replenishment,
+not a universal property of the learning algorithm, and is not by
+itself the explanation for RLInv's full advantage over TrackB.
 
-Cross-site evaluation confirmed that RLInv does not degrade
-meaningfully relative to the best rule-based baseline on easy or
-medium sites.  Reliability improvements concentrate on the two
-hardest, fuel-constrained sites (site~5 and site~10), consistent with
-the expectation that inventory management matters most where energy
-resources are scarce.
+\textbf{Inventory observability (H3).} RLInv achieves numerically lower
+EENS than an ablation with inventory and ordering-history observations
+removed, in every scenario, but the difference never reaches
+significance (closest at Extreme, $p=0.058$). This is reported as a
+genuine finding, not a shortfall: it suggests the agent can infer much
+of the required information indirectly from other observable state
+(battery state-of-charge, grid availability), so explicit inventory
+information plays a secondary role relative to the joint control
+architecture itself.
 
-\subsection{Novel Contributions}
+\subsection{Behaviour, robustness, and the exploratory extension}
 
-This thesis makes the following contributions to the literature on
-RL-based energy management of remote telecom infrastructure:
+Behavioural analysis shows RLInv's ordering frequency decreasing
+monotonically from 2.16 orders per episode under Normal logistics to
+1.34 under Extreme, consistent with the policy reducing new orders as
+delivery completion within the evaluation horizon becomes increasingly
+unlikely, while stockout events remain at zero even under Extreme
+stress --- unmet demand arises from graceful load-shedding, not
+uncontrolled fuel depletion. A continuous sweep across mean delivery
+lead time shows RLInv's advantage over the best classical baseline
+peaking at 29.5\,kWh around 72\,h and narrowing to 8.6\,kWh by 336\,h;
+this narrowing reflects a physical constraint common to every policy
+(tank capacity bounds how much can be pre-ordered regardless of
+strategy), not RLInv ceasing to function.
+
+The primary comparison is robust to reward-coefficient choice (EENS
+varies by only 3.32\,kWh across a 20-fold range of the unmet-load
+penalty), to tank capacity (RLInv's advantage vanishes only once the
+physical buffer, at 336\,h of capacity, is large enough to absorb
+delivery uncertainty without proactive ordering, confirming the
+mechanism rather than undermining it), and to the parametric form
+assumed for delivery delay (policy rankings are preserved under
+lognormal and Weibull alternatives, with RLInv less sensitive to this
+modelling choice than the classical baseline). One genuine limitation
+was found under stochastic (rather than deterministic) grid outages: a
+policy trained under this harder condition improves under Normal
+logistics but degrades under Delayed, Monsoon, and Extreme, most
+severely at Monsoon (+43.4\%) --- a real trade-off between adapting to
+grid uncertainty and conserving diesel under prolonged delivery
+disruption, reported as an identified limitation rather than resolved.
+
+An exploratory extension (RLInv-DA) investigated whether explicit
+delay-history tracking, motivated by Phase-I reviewer feedback,
+improves on RLInv further. Despite a verified, working mechanism (a
+correctly updating delay estimate under a persistent two-regime
+supplier model), the extension produced no consistent EENS improvement
+across the full evaluation grid. This null result is itself
+informative: RLInv's existing state representation already captures
+most of the information such delay estimation would provide, so the
+added complexity is not justified at the scale evaluated.
+
+% ============================================================
+\section{Novel Contributions}
+\label{sec:conclusion_contributions}
+% ============================================================
+
+This thesis makes the following contributions to RL-based energy
+management of remote telecom infrastructure:
 
 \begin{enumerate}
 
-  \item \textbf{CMDP formulation with explicit inventory pipeline state.}
-  The inclusion of in-transit diesel ($\mathrm{Pipe}_t$) as a state
-  variable, alongside fuel level, battery SoC, and grid availability,
-  enables anticipatory ordering decisions that react to lead-time
-  uncertainty before a stockout occurs.  To the best of the author's
-  knowledge, this state augmentation has not been applied to telecom
-  base station energy management in prior work.
+  \item \textbf{A CMDP formulation with explicit, jointly controlled
+  inventory and dispatch decisions.} The inclusion of diesel inventory
+  and in-transit pipeline state alongside battery state-of-charge and
+  grid availability enables anticipatory ordering that reacts to
+  lead-time uncertainty before a stockout occurs, evaluated against
+  eight comparator architectures rather than assumed superior.
 
-  \item \textbf{Empirical test of the coupling hypothesis.}
-  Rather than assuming that joint optimisation is superior to
-  decomposition, this work constructs a controlled ablation
-  (RLInv~vs.~A6~vs.~TrackB) that directly measures the value of
-  coupling.  The finding that joint ordering is beneficial under
-  normal logistics, but that decomposition is \emph{more robust}
-  under logistics stress, is a nuanced result with practical
-  implications for deployment strategy.
+  \item \textbf{A controlled empirical test of the coupling hypothesis
+  against both RL and optimisation-based decomposition.} Rather than
+  comparing only against other reinforcement-learning baselines, this
+  work includes a receding-horizon MPC baseline and a perfect-information
+  Oracle-MPC reference specifically to separate the contribution of
+  ordering from the contribution of dispatch quality --- a comparison
+  not present in the RL-energy-management literature reviewed in
+  Chapter~\ref{chap:literature}. The result is a genuinely
+  scenario-dependent finding, reported honestly rather than as a single
+  uniform verdict.
 
-  \item \textbf{Action masking for training stability in hybrid action
-  spaces.}  The use of MaskablePPO with analytically derived action
-  bounds provides a computationally lightweight mechanism for
-  maintaining feasibility during training in a space combining
-  discrete generator commitment and ordering decisions.  The ablation
-  demonstrates that masking primarily reduces outcome variance rather
-  than enforcing hard constraints at deployment.
+  \item \textbf{Evidence that action masking's primary value is
+  out-of-distribution robustness, not deployment-time constraint
+  enforcement.} The paired ablation isolating masking from ordering
+  mechanism shows a large effect specifically under logistics
+  conditions harsher than the training distribution, clarifying what
+  masking actually contributes in this setting.
 
-  \item \textbf{Reproducible open benchmark.}
-  The ITU/Zindi dataset, simulator, and evaluation pipeline are
-  publicly available, enabling direct comparison with Ma \&
-  Pan~(2025) and future work.  The structured ablation design
-  (eight policy variants, three seeds, two logistics scenarios,
-  ten sites) provides a reusable evaluation framework for
-  inventory-aware energy management research.
+  \item \textbf{A systematically verified, reproducible evaluation
+  framework.} All primary results, ablations, and robustness checks
+  (reward weighting, discount factor, tank capacity, distributional
+  form, stochastic grid outages) are computed from a single canonical
+  dataset (10 sites $\times$ 10 seeds $\times$ 4 scenarios, paired
+  statistical methodology throughout), with every figure and
+  statistic independently re-derived from source during this work
+  rather than assumed correct.
+
+  \item \textbf{An honestly reported exploratory extension.} The
+  delay-aware extension (RLInv-DA) is reported as a verified-but-null
+  result rather than omitted, on the basis that a well-implemented
+  negative result is more scientifically useful than an unreported one.
 
 \end{enumerate}
 
@@ -156,200 +228,124 @@ RL-based energy management of remote telecom infrastructure:
 \label{sec:conclusion_limitations}
 % ============================================================
 
-A number of constraints imposed by the 14-day execution window and
-the CPU-only compute environment limit the generalisability of the
-present results.  These are documented as a precise statement of scope
-rather than as weaknesses to be apologised for; each directly motivates
-the Phase~III plan in Section~\ref{sec:conclusion_future}.
+The following limitations define the scope within which these results
+should be interpreted; each is a precise statement of scope rather than
+an apology.
 
-\sloppy
 \begin{description}
 
-  \item[Statistical power.] All hypothesis tests are conducted at
-  $n=3$ seeds.  H2 and H3 are directionally consistent with the
-  proposed mechanisms but do not reach statistical significance.
-  Definitive conclusions on the contribution of action masking and
-  inventory observation require more seeds, which was not achievable
-  within the time budget.
+  \item[Synthetic delivery-pipeline state.] The in-transit diesel
+  quantity is the only state component not grounded directly in the
+  ITU/Zindi dataset, since the dataset does not record delivery events.
+  Its geometric (and, as a robustness check, lognormal and Weibull)
+  parameterisation is a modelling choice, not an empirical distribution
+  fitted to real vendor data.
 
-  \item[Synthetic lead-time distribution.] The in-transit state
-  variable $\mathrm{Pipe}_t$ is generated from a synthetic
-  lognormal distribution ($\mu=24$\,h, $\sigma=0.6$) because the
-  ITU dataset does not record diesel delivery event timestamps.
-  Real logistics patterns --- including seasonal supply disruptions
-  and road access constraints --- are not represented.
+  \item[Discrete, tank-relative order quantities.] Order quantities are
+  restricted to three levels expressed as a percentage of tank capacity
+  (0\%, 30\%, 60\%), rather than continuous or site-specific fixed
+  litre amounts. This simplifies the action space but means the
+  precise quantity granularity available to a real operator is not
+  represented.
 
-  \item[Single logistics scenario during training.] RLInv is
-  trained exclusively under normal logistics and evaluated on
-  both normal and delayed scenarios.  The $+122\%$ EENS degradation
-  under delay indicates that the learned ordering strategy is
-  optimised for the training distribution and does not generalise
-  to out-of-distribution lead-time stress without multi-scenario
-  training.
+  \item[Single-tower scope.] Each site is evaluated as an independent
+  control problem. Multi-tower coordination --- for example, several
+  towers competing for delivery slots from a shared supplier during a
+  regional disruption --- is outside the scope of the CMDP formulated
+  here.
 
-  \item[Reduced training scope.] To meet the compute budget,
-  training episodes were shortened to 30~days, the discount factor
-  was reduced to $\gamma=0.995$ (effective horizon $\approx
-  200$\,h), and order quantity was discretised to five levels.
-  These simplifications limit the policy's ability to learn
-  long-horizon inventory strategies.
+  \item[Stochastic grid outage trade-off unresolved.] Training under a
+  stochastic rather than deterministic grid-outage model improves
+  Normal-scenario performance but degrades performance under logistics
+  stress; this trade-off is documented (Chapter~\ref{chap:results}) but
+  not resolved within this thesis.
 
-  \item[Ablation coverage gaps.] A7 (no action masking) was not
-  evaluated under the delayed logistics scenario, and the A2--A4
-  ablations (individual safety component removal) were not executed
-  within the available time.  The H2 finding therefore rests on a
-  limited ablation coverage.
+  \item[RLInv-DA evaluated on a narrower grid.] The delay-aware
+  extension's evaluation uses three sites and three training seeds
+  rather than the full ten-site, ten-seed grid used elsewhere, since it
+  was scoped as an exploratory check rather than a primary result; its
+  null finding should be read with this narrower scope in mind.
 
-  \item[RL-only algorithmic comparison.] The present results
-  establish RL-vs-RL comparisons across the ablation study but do
-  not yet include a value-based RL ordering baseline, which would
-  clarify whether gains arise from the inventory-aware formulation
-  or the specific policy-gradient learning mechanism.
+  \item[No real vendor delivery data.] Every distributional-robustness
+  check (geometric, lognormal, Weibull) is a comparison between
+  parametric assumptions, not a validation against observed delivery
+  logs, which do not exist in the available dataset.
 
 \end{description}
-\fussy
 
 % ============================================================
-\section{Future Work and Phase-III Plan}
+\section{Future Work}
 \label{sec:conclusion_future}
 % ============================================================
 
-The results in Chapter~\ref{chap:results} show that RLInv improves
-reliability on constrained sites under the nominal logistics regime,
-but its performance degrades substantially under delayed replenishment.
-Accordingly, the next phase of this research will focus on improving
-robustness to logistics uncertainty, strengthening statistical
-confidence, and expanding algorithmic comparison within the existing
-simulator framework.  The four extensions below are scoped to a
-realistic continuation of four to six weeks.
+Several of the directions identified during the original project
+proposal --- multi-scenario evaluation, an expanded seed count,
+optimisation-based baselines, and cross-site robustness checks --- have
+since been completed and are reported in
+Chapter~\ref{chap:results} rather than remaining open. The four
+directions below are ordered by how directly they continue this
+thesis's own findings, from richer logistics modelling through to
+deployment generalisation; two smaller extensions follow at the end.
 
-\subsection*{1.\ Multi-scenario training for logistics robustness}
+\textbf{1.\ Richer logistics and supplier-behaviour modelling.} Two
+results in this thesis point the same way. First, RLInv-DA showed that
+a simple online estimator (EWMA) of realised delivery delay does not
+improve replenishment at the evaluation scale tested. Following the
+same progression EWMA itself follows in inventory-control practice, a
+Kalman-filter or Bayesian estimator of supplier state would be the
+natural next step before considering a learned forecasting model.
+Second, training under stochastic grid outages improves Normal-scenario
+performance at the cost of degraded performance under logistics stress;
+a natural extension is to train jointly under stochastic grid
+\emph{and} varied logistics scenarios simultaneously, testing whether
+this trade-off is an artefact of modelling only one source of
+uncertainty at a time. Both directions aim at the same underlying gap:
+richer, more realistic supplier and infrastructure behaviour than the
+geometric and two-state abstractions used here.
 
-The most immediate extension is to train RLInv across multiple
-replenishment regimes rather than a single nominal scenario.
-Concretely, the lead-time distribution $\mathrm{LogNormal}(\mu,{}\allowbreak\sigma)$
-can be varied across episodes by sampling $\mu$ uniformly from the
-range $[12, 72]$\,h during training, while evaluation is performed on
-fixed held-out regimes including the delayed scenario used in
-Chapter~\ref{chap:results}.  This domain-randomisation approach requires
-no structural changes to the simulator and directly tests whether
-exposure to logistics uncertainty during training can close the
-$+122\%$ EENS degradation gap observed under delayed delivery.
+\textbf{2.\ Fleet-level multi-agent reinforcement learning.} Realistic
+deployments often involve several towers sharing a common diesel
+supplier and competing for delivery capacity during regional
+disruptions. The single-tower CMDP formulated here cannot capture this
+coordination problem; a multi-agent extension in which each tower is an
+independent agent but lead times are coupled through shared logistics
+capacity is the most direct route to operationally realistic deployment
+at scale, and the natural fleet-level counterpart to the single-tower
+joint-optimisation result established here.
 
-A related modification is to introduce modest stochasticity in
-individual delivery realisations --- partial delays and occasional
-split deliveries --- while keeping the existing environment interface
-unchanged.  This provides a more realistic stress-test of the ordering
-policy without requiring a redesign of the CMDP formulation.
+\textbf{3.\ Validation against empirical delivery datasets.} Every
+distributional-robustness check in this thesis (geometric, lognormal,
+Weibull) compares parametric modelling assumptions against one another,
+not against observed delivery logs, since none exist in the available
+dataset. Partnering with a telecom operator or fuel logistics provider
+to obtain real delivery-time records would allow the lead-time model
+itself to be validated empirically, rather than only stress-tested
+across plausible parametric forms.
 
-\subsection*{2.\ Expanded statistical evaluation}
+\textbf{4.\ Transfer learning and cross-region deployment.} The
+cross-site evaluation in this thesis trains and evaluates a separate
+policy per site; it is a per-site robustness check, not a test of
+whether a policy trained on a subset of sites transfers to unseen ones
+or to a different deployment region. Training on a subset of sites and
+evaluating on held-out sites, or on sites from a different geographic
+region with different solar, load, and outage characteristics, would
+test this directly and is the natural precursor to any claim of
+practical, low-cost deployment across a large or geographically diverse
+fleet.
 
-The present ablation results rest on three training seeds, which is
-sufficient to report directional effects but insufficient to confirm
-statistical significance for H2 and H3.  A near-term extension is
-therefore to increase the seed count to ten or more and rerun the
-constrained-site evaluation, reporting 95\% confidence intervals
-alongside point estimates.  This would allow the H2 (action masking)
-and H3 (inventory observation) verdicts to be revisited with greater
-confidence, or to be definitively classified as effects that are too
-small to detect reliably at the current training scale.
-
-The evaluation protocol can further be strengthened by testing policy
-behaviour under additional stress scenarios, including extended grid
-outage stretches and more variable replenishment delays, to probe
-rare but operationally critical conditions.
-
-\subsection*{3.\ Value-based algorithmic baseline for ordering}
-
-The present thesis focuses on a policy-gradient approach (PPO) for
-both RL action components.  A practical next step is to add one
-value-based RL baseline specifically for the diesel ordering decision
---- for example, Double DQN over the five-level discrete order action
-space --- within the existing simulator.  This comparison would clarify
-whether the reliability gains demonstrated by RLInv arise from the
-inventory-aware state formulation itself or also depend on the
-policy-gradient learning mechanism.  The implementation cost is low
-because the simulator interface and evaluation pipeline require no
-modification.
-
-\subsection*{4.\ Cross-site and cross-distribution generalisation}
-
-The current evaluation treats each site as an independent training
-target.  A final extension is to test whether the learned policy
-captures general operational structure or depends heavily on
-site-specific patterns.  This can be assessed by training on a subset
-of ITU sites and evaluating on held-out sites, or by training under
-one logistics regime and evaluating under another.  Both experiments
-reuse the existing dataset and simulator, and would strengthen
-the practical claim that inventory-aware RL can generalise beyond
-the exact conditions represented during training.
-
-\subsection*{Indicative Phase-III timeline}
-
-\begin{itemize}
-  \item \textbf{Weeks 1--2:} implement multi-scenario training across
-  normal, delayed, and mixed logistics regimes; regenerate the
-  constrained-site evaluation and compare against current Phase-II
-  results.
-
-  \item \textbf{Weeks 3--4:} increase seed count to ten and rerun the
-  full ablation study; revise H2 and H3 verdicts using confidence
-  intervals and expanded seed-level statistics.
-
-  \item \textbf{Weeks 5--6:} add the value-based ordering baseline and
-  conduct cross-site / cross-distribution generalisation experiments;
-  consolidate all Phase-III results into a revised evaluation chapter.
-\end{itemize}
-
-\subsection*{Longer-term research directions}
-
-Beyond the six-week Phase-III scope, several directions follow
-naturally from the problem formulation and are worth identifying
-for the record, even where they are not immediate deliverables.
-
-\textbf{Classical optimisation comparison.}
-The present results establish RL-vs-RL comparisons across the ablation
-study, but a complete evaluation requires comparison against
-deterministic baselines used in commercial deployments.  Model
-Predictive Control (MPC) with a rolling forecast horizon is the
-natural comparator: it handles the dispatch problem well but typically
-relies on fixed safety-stock rules for the ordering decision, exactly
-the gap that RLInv targets.  Demonstrating that inventory-aware RL
-matches or exceeds MPC under stochastic lead times --- where
-certainty-equivalent planning is most vulnerable to lead-time
-uncertainty --- would be the strongest possible validation of the
-coupling hypothesis.
-
-\textbf{Carbon and cost multi-objective reporting.}
-The objective function defined in Chapter~\ref{chap:problem} includes
-a carbon cost term $c_{\mathrm{CO}_2}$, but the evaluation in
-Chapter~\ref{chap:results} reports only EENS and diesel consumption.
-A natural extension is to report Pareto frontiers in the
-EENS--CO$_2$ plane, testing whether the carbon penalty can reduce
-emissions without increasing service interruptions.  This requires no
-simulator change --- only an extension of the evaluation pipeline ---
-and would directly address sustainability framing that is increasingly
-required by telecom regulators in low- and middle-income countries.
-
-\textbf{Solar forecast integration.}
-RLInv currently observes the realised PV output at each timestep.
-In practice, day-ahead solar irradiance forecasts are available from
-numerical weather prediction services.  Augmenting the state space
-with a short-horizon forecast vector would allow the agent to
-anticipate low-PV periods and pre-position battery and diesel
-inventory accordingly.  This is a well-established improvement
-direction in RL-based energy management and would be straightforward
-to implement within the existing Gymnasium environment.
-
-\textbf{Multi-tower shared-supplier formulation.}
-In realistic deployments, multiple base stations share a common
-diesel supplier and compete for delivery slots, particularly during
-natural disasters or supply disruptions.  The single-tower CMDP
-formulated here cannot capture this coordination problem.  A
-multi-agent extension, in which each tower is an independent agent
-but lead times are coupled through shared logistics capacity, would
-address this gap and is the most direct route to operationally
-relevant deployment at scale.
+Two smaller extensions follow directly from the objective function and
+state representation already defined in this thesis, without requiring
+new experimental infrastructure. \textbf{Carbon and cost multi-objective
+reporting}: the objective function (Chapter~\ref{chap:problem}) includes
+a carbon-cost term that the evaluation reports only implicitly through
+diesel consumption; reporting EENS--CO$_2$ Pareto frontiers would test
+whether the carbon penalty can reduce emissions without increasing
+service interruptions. \textbf{Solar forecast integration}: RLInv
+currently observes only realised PV output; augmenting the observation
+with a short-horizon solar forecast, available in practice from
+numerical weather prediction services, would let the agent anticipate
+low-PV periods rather than reacting to them, a natural complement to
+the delay-aware extension already explored on the ordering side.
 
 % ============================================================
 \section{Closing Remarks}
@@ -357,30 +353,35 @@ relevant deployment at scale.
 % ============================================================
 
 This thesis set out to answer a specific question: does making the
-inventory pipeline visible to the RL controller --- letting it see
-how much diesel is in transit and decide when to order ---
-measurably reduce service interruptions at fuel-constrained
-telecom base stations?  Under the logistics conditions the agent
-was trained on, the answer is yes, and the improvement is large
-and statistically significant.  Under out-of-distribution logistics
-stress, the advantage disappears, revealing a robustness gap that
-is well-understood theoretically and correctable in Phase~III.
+diesel inventory pipeline visible to a reinforcement-learning
+controller, and letting it decide when and how much to order,
+measurably improve service reliability at fuel-constrained telecom
+base stations, relative to both classical decomposition and
+optimisation-based dispatch? The answer that emerges from a fully
+verified, paired-statistics evaluation across ten sites, ten seeds, and
+four logistics regimes is genuinely conditional: yes, under normal and
+severe logistics stress, and not distinguishably under moderate
+(Monsoon-scenario) stress, where a well-calibrated classical ordering
+rule is difficult to improve on.
 
-The thesis also demonstrates that the scientific question
-matters as much as the engineering result.  The decision to frame
-the study as a hypothesis test --- rather than as a claim that
-RL is superior to classical methods --- allowed the negative and
-null results (H2 and H3 inconclusive, H1 benefit disappears under
-delay) to contribute meaningfully rather than being suppressed.
-The finding that timescale decomposition is sufficient when logistics
-are stressed is an honest and useful result for practitioners
-deciding how to deploy energy management software at remote sites.
+This conditionality is not a weaker result than a uniform "RL wins
+everywhere" finding would have been --- it is a more useful one. A
+practitioner deciding how to deploy energy-management software at a
+remote site now has evidence about \emph{when} joint optimisation is
+worth its added complexity, rather than a claim that it always is. The
+decision to test three pre-registered hypotheses rather than assert
+that reinforcement learning is unconditionally superior allowed the
+scenario-dependent and null results (H1's Monsoon exception, H2's
+conditional benefit, H3's non-significance, RLInv-DA's null finding) to
+be reported as genuine evidence rather than suppressed in favour of a
+cleaner narrative.
 
-Energy security at remote telecom towers is not a niche problem.
-In many low- and middle-income countries, base station uptime
-determines access to emergency services, financial transfers, and
-public health communication.  A fuel stockout at the wrong site
-at the wrong time has consequences far beyond the cost of a
-missed call.  Building controllers that are both reliable under
-normal conditions and robust to supply disruptions is, therefore,
-not only a technical challenge but also an infrastructural necessity.
+Energy security at remote telecom towers is not a niche engineering
+problem. In many low- and middle-income countries, base station uptime
+determines access to emergency communication, mobile banking, and
+public health services, and diesel logistics account for a substantial
+share of operating cost in weak-grid deployments. A controller that is
+reliable under routine conditions and whose limits under logistics
+stress are precisely characterised, rather than assumed away, is a
+more trustworthy basis for real deployment decisions than one whose
+advantages are reported without qualification.
