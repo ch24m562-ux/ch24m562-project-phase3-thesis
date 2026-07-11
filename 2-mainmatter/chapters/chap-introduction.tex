@@ -119,7 +119,10 @@ of the author's knowledge, no prior RL formulation for telecom towers models
 the diesel tank level as a finite depletable stock or treats replenishment
 ordering as a control action. Existing formulations also do not account for
 stochastic delivery lead times and their interaction with dispatch decisions.
-This gap motivates the
+Most existing approaches optimise dispatch and fuel replenishment
+independently, despite the operational coupling between diesel consumption
+and future inventory availability under uncertain delivery lead times. This
+gap motivates the
 methodology adopted in this thesis. The following chapter reviews related
 work across telecom energy management, microgrid scheduling, and
 inventory-aware control, and positions the proposed formulation relative
@@ -355,6 +358,13 @@ dependencies. The vertical spine shows the sequential reading order.}
 \label{fig:thesis-roadmap}
 \end{figure}
 \FloatBarrier
+
+Accordingly, the objective of this thesis is not only to evaluate whether
+reinforcement learning improves operational performance, but also to
+understand under which operating conditions jointly learning replenishment
+and dispatch provides measurable benefit over conventional rule-based and
+optimisation-based approaches.
+
 % ============================================================
 \section{Thesis Organisation}
 % ============================================================
