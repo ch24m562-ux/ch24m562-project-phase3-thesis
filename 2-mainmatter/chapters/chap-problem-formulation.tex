@@ -197,18 +197,17 @@ future fuel availability when making present operational decisions.
 % ---------------------------------------------------------------
 
 Although the system dynamics can be written analytically, the resulting
-control problem becomes a stochastic mixed-integer dynamic program once diesel
-ordering, generator switching, and energy dispatch decisions are coupled across
-time. Solving such problems optimally requires accurate probabilistic models
-of solar generation, load variability, grid outages, and fuel delivery
-delays---all of which vary substantially across sites and seasons and are
-difficult to specify in closed form. Reinforcement learning provides an
-alternative approach by learning a policy directly from interaction with
-historical system trajectories, enabling the controller to adapt to stochastic
-conditions without repeatedly solving a large-scale optimisation problem at
-every timestep. Furthermore, once trained, the learned policy generalises
-across sites and operating scenarios, whereas a model-based optimisation must
-be re-solved from scratch for each new instance.
+control problem becomes a stochastic mixed-integer dynamic program once
+diesel ordering, generator switching, and dispatch decisions are
+coupled across time, requiring accurate probabilistic models of solar
+generation, load, grid outages, and delivery delay that are difficult
+to specify in closed form and vary across sites and seasons.
+Reinforcement learning avoids solving this optimisation problem from
+scratch at every step by learning a policy directly from interaction,
+and the trained policy generalises across sites and scenarios without
+re-solving. The algorithmic choices this motivates (PPO, action
+masking, and the unified-vs-hierarchical architecture question) are
+developed in Chapter~\ref{chap:methodology}.
 
 % ---------------------------------------------------------------
 \section{State Space}

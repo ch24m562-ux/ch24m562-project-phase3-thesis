@@ -312,6 +312,41 @@ Chapter~\ref{chap:results}).
 
 \subsection{Agent architecture and training}
 
+Figure~\ref{fig:rlinv_loop} shows the per-step decision loop RLInv
+executes at every timestep: the policy proposes an action, infeasible
+actions are masked before sampling, the environment steps forward, a
+reward is computed, and PPO uses that reward to update the policy over
+the course of training.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=1.6cm,
+  box/.style={draw, rounded corners, align=center,
+              minimum width=3.2cm, minimum height=0.8cm, font=\small},
+  >=Stealth
+]
+\node[box] (order)   {Policy proposes\\action};
+\node[box, right=of order]   (mask)  {Action masking};
+\node[box, right=of mask]    (env)   {Environment step};
+\node[box, below=of env]     (reward) {Reward computed};
+\node[box, left=of reward]   (ppo)    {PPO update};
+\node[box, left=of ppo]      (policy) {Policy updated};
+
+\draw[->] (order)  -- (mask);
+\draw[->] (mask)   -- (env);
+\draw[->] (env)    -- (reward);
+\draw[->] (reward) -- (ppo);
+\draw[->] (ppo)    -- (policy);
+\draw[->] (policy.north) |- ++(0,0.9) -| (order.north);
+\end{tikzpicture}
+\caption{RLInv's per-step decision loop. The mask is applied before
+sampling, so infeasible actions have zero probability rather than being
+sampled and penalised after the fact; PPO's policy update closes the
+loop over the course of training.}
+\label{fig:rlinv_loop}
+\end{figure}
+
 RLInv uses \texttt{MaskablePPO} with a flat MLP $[256,\,256]$ policy.
 Training used four parallel \texttt{SubprocVecEnv} environments for
 400{,}000 timesteps per seed. Ten independent training seeds were used
@@ -602,6 +637,35 @@ RLInv   & Learned (joint)       & Learned (PPO)        & --- & Proposed system \
 \section{Experimental Protocol}
 \label{sec:evaluation_protocol}
 % ============================================================
+
+Figure~\ref{fig:eval_flow} summarises the overall protocol: policies are
+trained, then evaluated on the held-out test window, with ablations and
+sensitivity checks run against the same evaluation grid before the
+paired statistical analysis is applied.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=1.2cm,
+  box/.style={draw, rounded corners, align=center,
+              minimum width=4.4cm, minimum height=0.8cm, font=\small}
+]
+\node[box] (train)      {Training (10 sites $\times$ 10 seeds)};
+\node[box, below=of train]      (evaluate)  {Evaluation (4 scenarios, 10 episodes/seed)};
+\node[box, below=of evaluate]   (ablations) {Ablations (A5, A6, A7 vs.\ RLInv)};
+\node[box, below=of ablations]  (sensitivity) {Sensitivity checks (reward, tank,
+                                                distribution, grid)};
+\node[box, below=of sensitivity] (statistics) {Paired statistics (Chapter~\ref{chap:results})};
+
+\draw[->] (train)      -- (evaluate);
+\draw[->] (evaluate)   -- (ablations);
+\draw[->] (ablations)  -- (sensitivity);
+\draw[->] (sensitivity)-- (statistics);
+\end{tikzpicture}
+\caption{Overall evaluation protocol, from training through to the
+paired statistical analysis reported in Chapter~\ref{chap:results}.}
+\label{fig:eval_flow}
+\end{figure}
 
 All nine policies are evaluated on the 15-day held-out test window (days
 46--60) of each of the ten ITU/Zindi sites, under all four delivery
