@@ -140,19 +140,25 @@ The central research question is:
 \begin{quote}
 \emph{Does jointly learning diesel ordering and energy dispatch within a single
 reinforcement-learning agent reduce unserved energy at remote telecom
-base stations relative to approaches that treat these decisions separately?}
+base stations relative to approaches that treat these decisions separately ---
+including both classical rule-based decomposition and optimisation-based
+dispatch?}
 \end{quote}
 
 To answer this question, the thesis formulates the problem as a
 \textbf{Constrained Markov Decision Process (CMDP)} and evaluates three
 hypotheses. The empirical evaluation focuses on reliability
 measured through \textbf{Expected Energy Not Served (EENS)} and related
-operational metrics:
+operational metrics, and deliberately includes a Model Predictive Control
+(MPC) baseline and a perfect-information Oracle-MPC reference alongside the
+reinforcement-learning comparators, so that any observed advantage can be
+attributed specifically to ordering rather than to dispatch quality or
+forecasting alone:
 
 \begin{description}
   \item[H1 (Joint ordering).] Does joint learning of dispatch and diesel
-  ordering reduce unserved energy relative to a decoupled $(s,S)$ ordering
-  policy with separately learned dispatch?
+  ordering reduce unserved energy relative to a classical $(s,S)$ ordering
+  policy, when dispatch architecture is held constant?
   \item[H2 (Action masking).] Does hard action masking reduce constraint
   violations and improve training stability relative to unconstrained RL?
   \item[H3 (Inventory observation).] Does including the diesel inventory state
@@ -171,17 +177,20 @@ The specific objectives of this work are to:
 
   \item Design and train reinforcement learning agents capable of jointly
   learning energy dispatch and diesel replenishment strategies under
-  operational constraints, and a hierarchical decomposition baseline in which
-  ordering and dispatch are learned separately.
+  operational constraints, alongside hierarchical decomposition baselines in
+  which ordering and dispatch are learned or optimised separately.
 
   \item Develop a Gymnasium-compatible simulation environment driven by real
   ITU/Zindi telecom site traces that reproduces empirically grounded load,
   PV generation, and grid availability dynamics at hourly resolution.
 
-  \item Benchmark the learned RL policies against rule-based and
-  decomposition-based baselines through a structured eight-variant ablation
-  study, quantifying improvements in unserved energy, diesel consumption, and
-  network uptime across multiple operating scenarios.
+  \item Benchmark the learned RL policies against rule-based,
+  decomposition-based, and optimisation-based baselines --- including MPC and
+  a perfect-information Oracle-MPC reference --- across ten sites, ten
+  independent training seeds, and four delivery-logistics scenarios of
+  increasing severity, quantifying improvements in unserved energy, diesel
+  consumption, and network uptime with paired statistical comparisons
+  throughout.
 \end{enumerate}
 
 
@@ -200,19 +209,29 @@ The main contributions of this thesis are:
   \item The design and empirical evaluation of a constrained reinforcement
   learning framework---\textbf{RLInv}---for hybrid telecom tower energy
   management, including inventory-aware state and action design, with hard
-  feasibility enforcement via action masking, and a hierarchical decomposition
-  baseline (TrackB) using a classical $(s,S)$ ordering policy.
+  feasibility enforcement via action masking, benchmarked against both a
+  hierarchical reinforcement-learning decomposition (TrackB) and
+  optimisation-based dispatch (MPC, Oracle-MPC) using a shared classical
+  $(s,S)$ ordering policy --- a comparison that isolates the contribution of
+  ordering from the contribution of dispatch quality, which is not present in
+  the RL-based telecom energy management literature reviewed in
+  Chapter~\ref{chap:literature}.
 
   \item An open, reproducible simulation environment and experimental protocol
   integrating the ITU~2024 Smart Energy Scheduling dataset (ten base station
-  sites, 60~days each) with a synthetic lead-time overlay, supporting
-  reproducible multi-site evaluation.
+  sites, 60~days each) with a synthetic lead-time overlay, evaluated across
+  ten independent training seeds and four delivery-logistics scenarios with
+  paired seed-level statistical methodology throughout.
 
-  \item An empirical evaluation across two logistics scenarios and eight policy
-  variants, demonstrating substantial reductions in unserved energy relative to
-  the hierarchical baseline---including a 49.6\% improvement under the trained
-  logistics scenario---and characterising the robustness limits that motivate
-  multi-scenario training in future work.
+  \item A scenario-dependent empirical characterisation of when joint
+  optimisation is beneficial: the paired ablation isolating replenishment
+  learning shows a significant advantage under normal and severe logistics
+  stress, no distinguishable advantage under moderate stress, and clarifies
+  that action masking's primary benefit is robustness to logistics conditions
+  outside the training distribution rather than deployment-time constraint
+  enforcement. An exploratory extension investigating explicit delivery-delay
+  tracking (RLInv-DA) is also reported, including its null result, as a
+  genuine finding rather than an omitted one.
 \end{enumerate}
 
 
@@ -238,16 +257,25 @@ scope choices:
   synthetic component, constructed via a \textbf{synthetic stochastic lead-time
   overlay applied to the diesel delivery process}; all other inputs are drawn
   directly from the ITU site traces.
-  \item Statistical comparisons are based on $n = 3$ independent random seeds,
-  which limits statistical power for H2 and H3 and motivates further replication
-  in future work.
+  \item Statistical comparisons use $n = 10$ independent seeds with paired
+  testing across identical site--scenario combinations (an increase from
+  an $n=3$ pilot evaluation conducted earlier in the project). This
+  improves statistical power considerably, but some comparisons ---
+  particularly the inventory-observability ablation (H3) --- remain
+  underpowered to detect small effects with high confidence; further
+  replication would strengthen these findings.
 \end{itemize}
 
 Limitations arising from these choices include:
 
 \begin{itemize}
-  \item The RL agent is trained under a single logistics scenario and does not
-  generalise robustly to delayed delivery conditions.
+  \item The RL agent is trained under Normal and Delayed logistics only,
+  with Monsoon and Extreme scenarios used purely as out-of-distribution
+  evaluation stress tests. Its advantage over classical ordering is
+  scenario-dependent rather than uniform, and narrows at very long delivery
+  lead times as physical tank capacity becomes the binding constraint for
+  every policy evaluated, not a training-distribution failure specific to
+  RLInv (Chapter~\ref{chap:results}).
   \item Multi-site coordination and shared fuel logistics are not modelled.
   \item Integrated forecasting modules for load or solar are not learned jointly
   with the control policy.
@@ -348,8 +376,9 @@ in detail:
 
   \item \textbf{Chapter~\ref{chap:methodology}} presents the implemented
   solution framework: the \texttt{TelecomEnv} simulator, the \texttt{MaskablePPO}
-  agent architecture, the $(s,S)$~hierarchical baseline, the eight ablation
-  variants, the training pipeline, and the evaluation protocol.
+  agent architecture, the full comparison-policy set (rule-based,
+  hierarchical-RL, and optimisation-based, including MPC and Oracle-MPC),
+  the training pipeline, and the evaluation protocol.
 
   \item \textbf{Chapter~\ref{chap:datasets-setup}} documents the ITU/Zindi
   dataset, preprocessing steps, cross-site heterogeneity, and the exploratory
@@ -361,13 +390,18 @@ in detail:
   and evaluation campaign details.
 
   \item \textbf{Chapter~\ref{chap:results}} presents and interprets the full
-  experimental results, including the main EENS comparison, the structured
-  ablation addressing H1, H2, and~H3, the delayed-logistics robustness
-  analysis, and cross-site generalisation findings.
+  experimental results, including the main EENS comparison against both
+  reinforcement-learning and optimisation-based baselines, the structured
+  ablation addressing H1, H2, and~H3, robustness checks across reward
+  design, tank capacity, delivery-distribution form, and stochastic grid
+  outages, and a per-site performance breakdown across the ten evaluated
+  sites.
 
-  \item \textbf{Chapter~\ref{chap:conclusion}} summarises the principal
-  contributions and limitations, and outlines directions for future work
-  including multi-scenario training and expanded statistical evaluation.
+  \item \textbf{Chapter~\ref{chap:conclusion}} discusses what the results
+  mean and why the scenario-dependent findings occurred, summarises the
+  principal contributions and limitations, and outlines future work
+  directions including richer logistics modelling, fleet-level multi-agent
+  extensions, and validation against empirical delivery data.
 \end{itemize}
 
 \clearpage

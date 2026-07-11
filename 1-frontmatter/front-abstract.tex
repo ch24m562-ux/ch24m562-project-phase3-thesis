@@ -1,16 +1,10 @@
-% filename: abstract-final.tex
-% Base: corrected draft provided by student
-% Fixes applied:
-%   - "up to 49.6%" → "a 49.6% reduction" (matches Ch7/Ch8 framing)
-%   - Added robustness finding (+122% EENS under delayed logistics) — Ch8 §8.2
-%   - "can significantly reduce" → factual conditional framing
-%   - Closing sentence: removed promotional "demonstrate the potential"; replaced
-%     with measured finding + caveat, matching Ch8 conclusion tone
-%   - Keywords: removed "safe RL"; added "action masking", "ITU dataset",
-%     "expected energy not served", "logistics uncertainty"
-%   - "solar–battery–diesel" hyphenation standardised
-%   - Minor: "Maskable Proximal Policy Optimisation" spelled out on first use
-% ============================================================
+% filename: front-abstract.tex
+% Phase 3 rewrite: every number verified against the frozen chap-results.tex.
+% The previous version reported Phase 2 statistics (49.6% reduction, p=0.042,
+% d=3.67, Welch's test; +122% degradation "indicating the policy does not
+% generalise robustly") as the thesis's headline finding. Those numbers and
+% that conclusion do not appear anywhere in the final Phase 3 evaluation and
+% are replaced below.
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
@@ -19,7 +13,8 @@
 \texorpdfstring{\MakeUppercase{Keywords}}{Keywords} &
 telecom tower sites; hybrid energy systems; solar PV; battery storage;
 diesel logistics; reinforcement learning; constrained Markov decision process;
-inventory management; action masking; expected energy not served
+inventory management; action masking; expected energy not served;
+model predictive control
 \end{tabular}
 \par
 \begin{doublespacing}
@@ -45,21 +40,35 @@ policies are trained using a Maskable Proximal Policy Optimisation
 feasibility constraints at every timestep.
 
 The proposed inventory-aware reinforcement learning policy (RLInv) is
-evaluated against rule-based controllers and hierarchical decomposition baselines through
-a structured eight-variant ablation study under two logistics scenarios.
-Under the trained logistics scenario, RLInv achieves a 49.6\% reduction in
-Expected Energy Not Served (EENS) relative to the hierarchical decomposition
-baseline, a difference that is statistically significant ($p=0.042$,
-Cohen's $d=3.67$). However, under a delayed-delivery scenario, RLInv's EENS
-increases by 122\%, the largest degradation among all policies evaluated,
-indicating that the learned policy does not generalise robustly beyond its
-training logistics distribution.
+evaluated against eight comparator policies --- rule-based, hierarchical-RL,
+and optimisation-based, including a receding-horizon Model Predictive
+Control (MPC) baseline and a perfect-information Oracle-MPC reference ---
+across ten sites, ten independent training seeds, and four delivery-logistics
+scenarios of increasing severity, using paired seed-level statistical
+comparisons throughout. RLInv achieves the lowest or joint-lowest mean
+Expected Energy Not Served (EENS) in three of the four evaluated
+scenarios, and this advantage is not attributable to superior dispatch or
+forecasting alone: the gap to Oracle-MPC, which has access to perfect
+future information for both, does not shrink under increasing logistics
+stress. Isolating the contribution of jointly learned replenishment from a
+cleaner ablation shows a benefit that is scenario-dependent rather than
+universal --- significant under normal and severe logistics stress, but not
+distinguishable from a classical ordering rule under moderate (monsoon-scenario)
+stress. Action masking is shown to improve dispatch-policy robustness
+specifically under logistics conditions harsher than the training
+distribution, rather than acting as the primary safety mechanism at
+deployment time.
 
-These results show that joint learning of diesel ordering and energy dispatch
-reduces unserved energy relative to decoupled ordering strategies under
-matched conditions, while classical inventory heuristics offer greater
-structural robustness under logistics stress. Both findings contribute to the
-understanding of when inventory-aware reinforcement learning provides
-reliable advantage for hybrid telecom energy management.
+These results indicate that the value of jointly learning replenishment
+and dispatch is conditional on the logistics regime rather than
+unconditional: reinforcement learning is not shown to be universally
+superior to classical optimisation, but joint optimisation of
+replenishment and dispatch is shown to provide measurable value
+specifically under uncertainty that classical rule-based coordination
+cannot easily represent. This conditional finding, together with a
+systematically verified evaluation framework spanning primary comparison,
+mechanism ablations, and multiple robustness checks, is offered as a more
+useful basis for deployment decisions than an unconditional claim of RL
+superiority would have been.
 
 \end{doublespacing}
