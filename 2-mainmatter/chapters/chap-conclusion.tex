@@ -1,9 +1,3 @@
-% filename: chap-conclusion-v3.tex
-% Complete Phase 3 rewrite. Every number below is drawn directly from the
-% frozen chap-results.tex / THESIS_FREEZE_v1.md, not carried over from the
-% Phase 2 draft this replaces. That draft framed most of Phase 3 (10 seeds,
-% 4 scenarios, MPC/Oracle-MPC comparison, cross-site evaluation) as future
-% work still to be done; all of it is now complete and reported here.
 \chapter{Discussion and Conclusion}
 \label{chap:conclusion}
 \setlength{\emergencystretch}{1.5em}
@@ -37,7 +31,7 @@ order quantity jointly, with battery dispatch handled by a fixed
 priority rule and an 11-dimensional observation vector including
 explicit inventory and pipeline state (Chapter~\ref{chap:problem}).
 RLInv was evaluated against eight comparator policies spanning
-rule-based, hierarchical-RL, and optimisation-based approaches ---
+rule-based, reinforcement learning, and optimisation-based approaches ---
 including, notably, a receding-horizon MPC baseline and a perfect-information
 Oracle-MPC upper bound, added specifically to distinguish whether any
 observed advantage reflects better \emph{ordering} or merely better

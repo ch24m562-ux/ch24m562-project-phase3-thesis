@@ -1,11 +1,3 @@
-% filename: front-abstract.tex
-% Phase 3 rewrite: every number verified against the frozen chap-results.tex.
-% The previous version reported Phase 2 statistics (49.6% reduction, p=0.042,
-% d=3.67, Welch's test; +122% degradation "indicating the policy does not
-% generalise robustly") as the thesis's headline finding. Those numbers and
-% that conclusion do not appear anywhere in the final Phase 3 evaluation and
-% are replaced below.
-
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
@@ -40,8 +32,8 @@ policies are trained using a Maskable Proximal Policy Optimisation
 feasibility constraints at every timestep.
 
 The proposed inventory-aware reinforcement learning policy (RLInv) is
-evaluated against eight comparator policies --- rule-based, hierarchical-RL,
-and optimisation-based, including a receding-horizon Model Predictive
+evaluated against eight comparator policies --- rule-based, reinforcement
+learning, and optimisation-based, including a receding-horizon Model Predictive
 Control (MPC) baseline and a perfect-information Oracle-MPC reference ---
 across ten sites, ten independent training seeds, and four delivery-logistics
 scenarios of increasing severity, using paired seed-level statistical
@@ -49,8 +41,8 @@ comparisons throughout. Across the four representative logistics scenarios,
 RLInv achieves the lowest mean Expected Energy Not Served (EENS) in three
 scenarios and remains statistically competitive in the fourth, and this
 advantage is not attributable to superior dispatch or
-forecasting alone: the gap to Oracle-MPC, which has access to perfect
-future information for both, does not shrink under increasing logistics
+forecasting alone: the gap to Oracle-MPC, which assumes perfect
+future information, does not shrink under increasing logistics
 stress. Isolating the contribution of jointly learned replenishment from a
 cleaner ablation shows a benefit that is scenario-dependent rather than
 universal --- significant under normal and severe logistics stress, but not

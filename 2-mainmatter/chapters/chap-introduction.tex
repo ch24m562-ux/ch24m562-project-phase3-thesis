@@ -1,16 +1,3 @@
-% filename: chap-introduction-v2.tex
-% Strategy: §1.1 Background and §1.2 Current Practices preserved from Phase-I draft
-%   (rich industry stats and citations intact).
-%   §1.3 onward rewritten to:
-%     - remove all Phase-I / Phase-II framing
-%     - replace "perishable inventory" with "finite replenishable inventory"
-%     - replace SC-PPO with MaskablePPO / constrained RL
-%     - correct single-site scope claim to multi-site evaluation
-%     - correct 15-minute → hourly (Δt = 1h, consistent with Ch3/Ch5)
-%     - update thesis organisation to match actual chapter content
-%     - add H1/H2/H3 hypotheses and key empirical numbers
-% ============================================================
-
 \chapter{Introduction}
 \label{chap:introduction}
 
@@ -387,7 +374,7 @@ in detail:
   \item \textbf{Chapter~\ref{chap:methodology}} presents the implemented
   solution framework: the \texttt{TelecomEnv} simulator, the \texttt{MaskablePPO}
   agent architecture, the full comparison-policy set (rule-based,
-  hierarchical-RL, and optimisation-based, including MPC and Oracle-MPC),
+  reinforcement learning, and optimisation-based, including MPC and Oracle-MPC),
   the training pipeline, and the evaluation protocol.
 
   \item \textbf{Chapter~\ref{chap:datasets-setup}} documents the ITU/Zindi
