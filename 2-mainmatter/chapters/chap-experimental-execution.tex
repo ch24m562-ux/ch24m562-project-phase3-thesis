@@ -21,6 +21,7 @@ Table~\ref{tab:impl_sequence}).
 
 \begin{figure}[htbp]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
   node distance=0.5cm and 1.3cm,
   box/.style={draw, rounded corners, align=center,
@@ -42,7 +43,8 @@ Table~\ref{tab:impl_sequence}).
 \draw[->] (trackb) -- (abl);
 \draw[->] (abl)  -- (opt);
 \draw[->] (opt)  -- (eval);
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption{Experiment execution pipeline, following the layer order of
 Table~\ref{tab:impl_sequence}.}
 \label{fig:exec_pipeline}
@@ -53,7 +55,7 @@ Table~\ref{tab:impl_sequence}.}
 \small
 \caption{Implementation execution sequence.}
 \label{tab:impl_sequence}
-\begin{tabular}{lll}
+\begin{tabular}{cp{2.6cm}p{8.2cm}}
 \toprule
 \textbf{Layer} & \textbf{Component} & \textbf{Deliverable} \\
 \midrule
