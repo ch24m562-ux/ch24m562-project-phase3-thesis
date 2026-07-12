@@ -271,8 +271,8 @@ effect is not about constraint enforcement \emph{per se} but about the
 quality of the dispatch policy learned --- action masking constrains
 exploration to the feasible subspace during training, which produces a
 policy that generalises more reliably to logistics conditions never
-seen during training (both variants were trained only up to
-$\mu=120$\,h, never on Monsoon or Extreme). This is best understood as
+seen during training (both variants were trained only under Normal
+logistics, $\mu=24$\,h, never on Delayed, Monsoon, or Extreme). This is best understood as
 an out-of-distribution robustness effect, not a general mean-EENS
 improvement, and not the entire explanation for RLInv's advantage over
 TrackB. The benefit of masking is therefore conditional on externally
