@@ -292,7 +292,32 @@ These controllers lack predictive or adaptive capabilities and do not account
 for long-horizon fuel logistics or battery ageing, reinforcing the need for
 RL-based supervisory control.
 
+\subsection{Model Predictive Control as an Alternative Paradigm}
+
+Beyond rule-based control, receding-horizon Model Predictive Control (MPC)
+is a well-established optimisation-based alternative to reinforcement
+learning for energy dispatch, re-solving a finite-horizon optimisation
+problem at every step subject to system dynamics and operational
+constraints \citep{camacho2007model}. Within the telecom-tower literature
+reviewed above, Ma~\&~Pan~(2025) directly compare their RL controller
+against an MPC baseline with imperfect forecasts, finding RL preferable
+under their dataset (Section~\ref{sec:ma-pan}); however, no surveyed work
+examines MPC specifically as a lens for isolating whether an RL
+controller's advantage stems from ordering decisions, dispatch
+optimisation, or forecast quality. This distinction motivates the
+inclusion of both a practical and a perfect-information MPC comparator in
+this thesis (Chapter~\ref{chap:methodology}).
+
 \section{Inventory and Replenishment Theory in Fuel/Energy Logistics}
+
+Classical inventory theory provides the $(s,S)$ policy --- order up to $S$
+whenever stock falls below a reorder point $s$ --- as the standard,
+well-understood benchmark for replenishment under stochastic demand and
+lead time \citep{silver1998inventory,zipkin2000foundations}. This
+formulation underlies one of the baseline comparators used in this thesis
+(Chapter~\ref{chap:methodology}) and represents decades of established
+operations-research practice, against which the value of learning the
+ordering decision jointly with dispatch can be meaningfully assessed.
 
 Deep RL has matured in inventory-style energy and logistics problems, including
 energy storage and battery management \citep{mao2021_inventory_rl},
@@ -404,14 +429,17 @@ framework, evaluated empirically using real ITU/Zindi site traces within a data-
     with action masking to enforce hard operational feasibility constraints.
 
     \item \textbf{Empirically tests} whether joint \emph{learning} of
-    dispatch and ordering outperforms classical hierarchical decomposition
-    ($(s,S)$ ordering with separate RL dispatch), using a structured
-    ablation study on real ITU/Zindi site traces across ten base stations
-    within a data-grounded simulation environment.
+    dispatch and ordering outperforms both classical hierarchical
+    decomposition ($(s,S)$ ordering with separate RL dispatch) and
+    optimisation-based dispatch (model predictive control, including a
+    perfect-information reference), using a structured ablation study on
+    real ITU/Zindi site traces across ten base stations within a
+    data-grounded simulation environment.
 
-    \item \textbf{Evaluates} robustness to logistics stress by comparing
-    normal and delayed replenishment scenarios, identifying the conditions
-    under which inventory-aware RL provides reliable advantage.
+    \item \textbf{Evaluates} robustness to logistics stress across four
+    delivery-logistics scenarios of increasing severity, identifying the
+    conditions under which inventory-aware RL provides a reliable
+    advantage over classical and optimisation-based alternatives.
 \end{itemize}
 
 \section{Conclusion}
