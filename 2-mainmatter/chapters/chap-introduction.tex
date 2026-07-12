@@ -8,7 +8,7 @@
 Information and Communication Technology (ICT) has become a foundational
 pillar of the global digital economy, powering mobile connectivity, cloud
 services, fintech, digital governance, and critical public infrastructure.
-As of 2025, mobile networks serve more than 5.6--5.8 billion unique
+As of 2025, mobile networks serve approximately 5.7 billion unique
 subscribers worldwide, representing over 70\% of the global population
 \citep{gsma2025_mobile_economy}. Mobile data traffic continues to grow at
 double-digit annual rates, driven by video streaming, Internet-of-Things
@@ -59,8 +59,8 @@ traffic-driven loads, and grid outages requires sophisticated control beyond
 current rule-based systems.
 
 In India---the world's second-largest mobile market with over
-1.2 billion subscribers and approximately
-400{,}000--500{,}000 tower sites---the challenge is particularly
+1.2 billion subscribers and over
+800{,}000 tower sites \citep{dot2024_towers}---the challenge is particularly
 acute. Rural and semi-urban grid availability often falls below 14 hours per
 day, making diesel dominant at many sites \citep{trai2024,datoms2024}.
 Aggressive 5G rollout and renewable energy mandates intensify pressure for
@@ -89,9 +89,10 @@ in real time to uncertainty \citep{homer_energy_2020,meena2020_homer_telecom}.
 
 More advanced approaches---such as Model Predictive Control (MPC), stochastic
 programming, and classical optimisation---improve performance by explicitly
-optimising over a rolling horizon. However, they demand accurate short-term
-forecasts and non-trivial on-site computation, making them less attractive for
-low-cost tower controllers in remote locations.
+optimising over a rolling horizon. MPC and related methods require an
+explicit system model, suitable forecasts, and repeated online
+optimisation; their effectiveness therefore depends on model and forecast
+quality as well as the available controller resources.
 
 Reinforcement Learning (RL) has recently shown strong results in microgrids,
 electric vehicles, and building energy management, where agents learn to trade
@@ -100,7 +101,7 @@ off cost and reliability under uncertainty
 work specifically on telecom base station energy management has demonstrated
 18--47\% reductions in operating cost relative to rule-based and MPC baselines
 \citep{ma_pan_2025_telecom_ies,yan_2025_safe_marl_bs,alhajhassan_2024_battery_ageing_rl}.
-Yet a decisive modelling gap persists across this body of work: diesel fuel is
+However, an important modelling gap remains across this body of work: diesel fuel is
 generally treated as an always-available, unconstrained resource. To the best
 of the author's knowledge, no prior RL formulation for telecom towers models
 the diesel tank level as a finite depletable stock or treats replenishment
@@ -120,10 +121,11 @@ to existing approaches.
 \section{Research Problem and Objectives}
 % ============================================================
 
-The problem addressed here is how to optimally manage energy resources
+The problem addressed here is how to coordinate energy resources
 and diesel replenishment in hybrid telecom towers under significant uncertainty
 in solar generation, grid availability, and diesel delivery, so as to minimise
-unserved energy and operational expenditure while ensuring service continuity.
+unserved energy and operational expenditure while improving service
+reliability and respecting operational constraints.
 
 The central research question is:
 
@@ -149,8 +151,9 @@ examined separately:
   \item[H1 (Joint ordering).] Does joint learning of dispatch and diesel
   ordering reduce unserved energy relative to a classical $(s,S)$ ordering
   policy, when dispatch architecture is held constant?
-  \item[H2 (Action masking).] Does hard action masking reduce constraint
-  violations and improve training stability relative to unconstrained RL?
+  \item[H2 (Action masking).] Does hard action masking improve reliability
+  under stressed logistics, and does its effect depend on whether diesel
+  replenishment is externally managed or learned jointly?
   \item[H3 (Inventory observation).] Does removing the five inventory- and
   delivery-related observation channels reduce reliability relative to the
   full RLInv observation space?
@@ -194,17 +197,18 @@ The main contributions of this thesis are:
   \item A telecom-tower-specific, inventory-theoretic CMDP formulation that
   explicitly represents battery state-of-charge and diesel fuel volume as
   state variables subject to uncertain demand, stochastic replenishment lead
-  times, and cost/emission penalties.
+  times, and operational cost, reliability, and feasibility penalties.
 
   \item The design and empirical evaluation of a constrained reinforcement
   learning framework---\textbf{RLInv}---for hybrid telecom tower energy
   management, including inventory-aware state and action design with hard
   feasibility enforcement via action masking. RLInv is benchmarked against
-  both a dispatch-only RL baseline with externally managed replenishment
-  (TrackB) and
-  optimisation-based dispatch (MPC, Oracle-MPC) using a shared classical
-  $(s,S)$ ordering policy, a comparison that isolates the contribution of
-  ordering from the contribution of dispatch quality and is not present in
+  a dispatch-only RL policy with externally
+  managed replenishment (TrackB), optimisation-based dispatch policies
+  (MPC and Oracle-MPC), and the controlled A6 ablation. The RLInv--A6
+  comparison isolates the contribution of jointly learned replenishment
+  while holding the dispatch architecture comparable, a controlled
+  comparison not present in
   the RL-based telecom energy management literature reviewed in
   Chapter~\ref{chap:literature}.
 
@@ -216,14 +220,18 @@ The main contributions of this thesis are:
   comparisons.
 
   \item A scenario-dependent empirical characterisation of when joint
-  optimisation is beneficial: the paired ablation isolating replenishment
-  learning (H1) shows a significant advantage under normal and severe
-  logistics stress and no distinguishable advantage under moderate stress.
-  A separate ablation shows that masking prevents severe dispatch-policy
+  optimisation is beneficial: the H1 comparison favours RLInv under Normal
+  and Extreme logistics, while no statistically distinguishable advantage
+  is observed under Delayed or Monsoon conditions.
+  
+   \item A separate ablation shows that masking prevents severe dispatch-policy
   degradation under stressed logistics when replenishment is externally
   managed; no measurable mean-EENS benefit is observed when ordering is
-  already learned jointly. An exploratory extension investigating explicit delivery-delay
-  tracking (RLInv-DA) is also reported, including its null result, as a
+  already learned jointly.
+
+  \item An exploratory extension investigating explicit delivery-delay
+  tracking (RLInv-DA) is also reported, including the finding that explicit
+  delay awareness did not provide a consistent improvement over RLInv, as a
   genuine finding rather than an omitted one.
 \end{enumerate}
 
@@ -238,18 +246,20 @@ scope choices:
 \begin{itemize}
   \item The control problem is formulated at the level of an individual tower
   site; empirical evaluation is conducted across all ten ITU/Zindi sites to
-  assess site-to-site robustness and heterogeneity.
+  assess performance across heterogeneous site profiles.
   \item Control decisions are taken at \textbf{hourly resolution}
   ($\Delta t = 1$\,h), consistent with the temporal granularity of the
   ITU/Zindi dataset.
   \item Component sizes (PV, battery, DG rating, tank capacity) are assumed
   given; the focus is on \emph{operational control}, not investment planning.
-  \item Standard empirical models are used for battery ageing and generator
-  efficiency; detailed electrochemical degradation models are outside the scope.
-  \item The in-transit diesel state variable ($\mathrm{Pipe}_t$) is the sole
-  synthetic component, constructed via a \textbf{synthetic stochastic lead-time
-  overlay applied to the diesel delivery process}; all other inputs are drawn
-  directly from the ITU site traces.
+  \item Battery operation is modelled using engineering constraints on
+  state of charge and energy balance; detailed electrochemical
+  degradation is outside the scope of this work.
+  \item The stochastic diesel-delivery process is the principal synthetic
+  time-varying overlay. Load, PV generation, and grid-availability inputs
+  are drawn directly from the ITU site traces, while component parameters
+  and operational constraints are specified from the adopted engineering
+  assumptions.
   \item Statistical comparisons use $n = 10$ independent seeds with paired
   testing across identical site--scenario combinations (an increase from
   an $n=3$ pilot evaluation conducted earlier in the project). This
@@ -263,9 +273,12 @@ scope choices:
 Limitations arising from these choices include:
 
 \begin{itemize}
-  \item The RL agent is trained under Normal and Delayed logistics only,
-  with Monsoon and Extreme scenarios used purely as out-of-distribution
-  evaluation stress tests. Its advantage over classical ordering is
+  \item The proposed framework is trained under representative
+  delivery-delay regimes defined in the experimental protocol and
+  subsequently evaluated across four representative logistics scenarios.
+  Chapter~\ref{chap:methodology} describes the training protocol in
+  detail, while Chapter~\ref{chap:results} presents the corresponding
+  evaluation results. RLInv's advantage over classical ordering is
   scenario-dependent rather than uniform, and narrows at very long delivery
   lead times as physical tank capacity becomes the binding constraint for
   every policy evaluated, not a training-distribution failure specific to

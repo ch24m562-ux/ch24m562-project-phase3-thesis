@@ -245,8 +245,9 @@ model preserves a Markovian state with only the two pending-order scalars
 (flag and quantity), avoiding a countdown vector. Four scenarios are used
 in the evaluation campaign: Normal ($p=1/24$, mean 24\,h), Delayed
 ($p=1/48$, mean 48\,h), Monsoon ($p=1/72$, mean 72\,h), and Extreme
-($p=1/336$, mean 336\,h). Normal and Delayed are used during training;
-Monsoon and Extreme are evaluation-only out-of-distribution stress tests.
+($p=1/336$, mean 336\,h). All policies are trained under the Normal
+scenario only; Delayed, Monsoon, and Extreme are evaluation-only
+out-of-distribution stress tests.
 Each scenario represents a distinct operating regime rather than an
 arbitrary parameter value (Table~\ref{tab:scenario_meaning}).
 
