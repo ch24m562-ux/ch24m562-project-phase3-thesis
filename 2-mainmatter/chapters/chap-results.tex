@@ -1,675 +1,558 @@
-\chapter{Experimental Results}
-\label{chap:results}
-\setlength{\emergencystretch}{1.5em}
+\chapter{Problem Definition and Mathematical Formulation}
+\label{chap:problem}
 
-% ============================================================
-\section{Experimental Overview}
-\label{sec:results_overview}
-% ============================================================
-
-This chapter answers three questions: does RLInv improve reliability
-over existing rule-based and optimisation-based approaches; which
-design choices are responsible; and how far do these conclusions hold
-under different reward, sizing, and delivery-time assumptions. Evidence
-is drawn from the full Phase 3 evaluation grid (10 sites, 10 seeds,
-four delivery-logistics scenarios), reported primarily as Expected
-Energy Not Served (EENS), with the site, scenario, and metric
-definitions given in Chapter~\ref{chap:methodology}.
-
-% ============================================================
-\section{Primary Comparison}
-\label{sec:primary_comparison}
-% ============================================================
-
-\emph{Does RLInv outperform existing approaches?}
-
-Table~\ref{tab:primary_comparison} compares RLInv against four
-reference policies. Two are rule-based: a threshold policy without
-inventory logic (B0), and a classical $(s,S)$ inventory policy with
-rule-based dispatch (B1). One is optimisation-based: a rolling-horizon
-Model Predictive Control baseline (MPC) that addresses the standing
-question of whether classical optimisation is sufficient once its
-required forecasts are supplied. The fourth pairs the same classical
-$(s,S)$ ordering rule with a \emph{learned} (reinforcement-learning)
-dispatch policy, and is included to isolate a distinct question from
-the other three: whether reinforcement learning \emph{alone}, applied
-only to dispatch, is sufficient, or whether the reliability gains
-reported below require learning ordering and dispatch \emph{jointly}.
-An oracle variant of MPC, given perfect foresight of load and solar
-generation, is included as an optimistic reference representing the
-best achievable dispatch performance within the decomposition
-framework under perfect future information; it is not intended as a
-deployable policy and is not counted among the competing baselines.
-
-\begin{table}[htb]
+% ---------------------------------------------------------------
+\section{Chapter Overview and Notation}
+% ---------------------------------------------------------------
+\begin{table}[ht]
 \centering
-\caption{Primary comparison: mean EENS (kWh) by policy and delivery
-scenario, aggregated over 10 sites $\times$ 10 seeds. Lower is better.}
-\label{tab:primary_comparison}
-\begin{tabular}{lrrrr}
+\small
+\begin{tabular}{l>{\raggedright\arraybackslash}p{9.8cm}}
 \toprule
-Policy & Normal & Delayed & Monsoon & Extreme \\
+\textbf{Symbol}                        & \textbf{Description} \\
 \midrule
-B0 (threshold rule) & 9.94 & 24.53 & 35.52 & 66.63 \\
-B1 ($(s,S)$ + rule dispatch) & 3.55 & 13.43 & 23.20 & 57.73 \\
-MPC ($H{=}24$, persistence) & 3.08 & 13.14 & 22.84 & 57.38 \\
-$(s,S)$ + learned dispatch (RL alone) & 1.28 & 3.65 & 174.50 & 152.13 \\
+$t$                                    & Time index (hourly intervals) \\
+$\Delta t = 1$\,h                      & Time-step duration \\
+$P_t^{\PV}$                            & Solar PV generation (kW) \\
+$P_t^{\Load}$                          & Telecom load demand (kW) \\
+$G_t \in \{0,1\}$                      & Grid availability indicator \\
+$\SoC_t \in [0,1]$                     & Battery state-of-charge (normalised) \\
+$\Inv_t$                               & On-site diesel inventory (litres) \\
+$\Pipe_t$                              & Total diesel quantity in transit (litres); at most one
+                                         pending order at any time \\
+$P_t^{\Bat}$                           & Battery power (positive = charge, negative = discharge) (kW) \\
+$P_{\max}^{\ch},\; P_{\max}^{\dis}$    & Battery charge/discharge power limits (kW) \\
+$\DG_t \in \{0,1\}$                    & Diesel generator ON/OFF decision (1 = ON at fixed power) \\
+$P_{\mathrm{rated}}^{\DG}$             & DG fixed operating power when on (kW) \\
+$P_t^{\DG}$                            & DG electrical output $= \DG_t \cdot P_{\mathrm{rated}}^{\DG}$ \\
+$Q_t$                                  & Diesel order quantity (litres) \\
+$r_{\DG}$                              & DG fuel consumption rate (litres/kWh) \\
+$C^{\Tank}$                            & Tank capacity (litres) \\
+$E_{\Bat}$                             & Battery energy capacity (kWh) \\
+$\eta_{\ch},\; \eta_{\dis}$            & Charge/discharge efficiency \\
+$\hour_t$                              & Hour-of-day encoded as $(\sin(2\pi h/24),\cos(2\pi h/24))$ \\
+$L_t$                                  & Stochastic lead time (timesteps) for a placed diesel order \\
+$\tau_t$                               & Hours elapsed since the last order was placed (reset to 0 on each new order) \\
+$R_t$                                  & Estimated hours remaining until delivery; identically zero except in the
+                                         separate lognormal-forecast extension not used in the main experiments \\
+$A_t$                                  & Diesel arrival quantity at time $t$ (litres) \\
+$\gamma$                               & Discount factor \\
 \midrule
-\textit{Oracle-MPC (perfect forecast, reference only)} & \textit{3.17} & \textit{13.26} & \textit{23.20} & \textit{57.45} \\
+\multicolumn{2}{l}{\textit{Objective function coefficients}} \\
 \midrule
-\textbf{RLInv (proposed, joint learning)} & \textbf{0.02} & \textbf{3.60} & \textbf{11.29} & \textbf{53.85} \\
+$P_t^{\Grid}$                          & Grid power drawn at time $t$ (kW) \\
+$P_t^{\Grid,\max}$                     & Maximum grid connection capacity (kW) \\
+$c_{\Grid}$                            & Grid electricity cost coefficient (Rs./kWh) \\
+$c_{\mathrm{diesel}}$                  & Diesel fuel cost (Rs./litre) \\
+$c_{\order}$                           & Fixed administrative cost per order placed (Rs.) \\
+$c_{\hold}$                            & Inventory holding cost coefficient (Rs./litre/h) \\
+$c_{\degrad}$                          & Battery degradation cost coefficient (Rs./kWh throughput) \\
+$c_{\COtwo}$                           & Carbon cost coefficient (Rs./kg\,CO$_2$e) \\
+$\EF_{\mathrm{diesel}}$                & Diesel emission factor ($= 2.68$\,kg\,CO$_2$e/litre) \\
+$\lambda_{\short}$                     & Penalty coefficient for fuel-shortage events \\
 \bottomrule
 \end{tabular}
+\caption{Complete notation used in the mathematical formulation.}
+\label{tab:notation}
 \end{table}
 
-RLInv achieves the lowest EENS across all four scenarios. Under normal
-logistics, most policies perform adequately, but the advantage of
-RLInv widens substantially as delivery uncertainty increases: relative
-to the strongest classical baseline (B1), RLInv reduces EENS by 73\%
-under delayed logistics, 51\% under monsoon conditions, and 7\% under
-extreme logistics stress. The narrowing margin under the most severe
-scenario is itself informative: under a mean 336-hour delivery lead
-time, the achievable planning horizon for \emph{any} policy is bounded
-by physical fuel availability, and the residual advantage reflects
-RLInv's more efficient scheduling of a scarce resource rather than a
-qualitatively different capability (see Section~\ref{sec:mechanism_h1}).
+As established in Chapter~\ref{chap:literature} and summarised in
+Table~\ref{tab:litgap}, to the best of the author's knowledge no prior work
+jointly models diesel fuel as a finite stochastic inventory while
+simultaneously optimising operational energy dispatch in telecom towers.
+In rural deployments, diesel logistics---including pilferage, stockouts, and
+delivery disruptions---contribute significantly to tower outages
+\citep{datoms2024,alton2025,gsma2025b,trai2024}.
 
-The comparison with Oracle-MPC, on paired (site, seed) comparisons
-($n{=}100$), indicates a real difference under normal, delayed, and
-monsoon conditions: mean paired differences of 3.15, 9.67, and
-11.91\,kWh respectively, with 95\% confidence intervals excluding zero
-in all three cases. Under extreme conditions the paired difference is
-directionally consistent but the interval spans zero (3.60\,kWh, 95\%
-CI $[-0.18, 7.38]$). This gap does not shrink under increasing
-logistics stress relative to a policy with perfect future information
---- it is largest under monsoon conditions --- indicating that RLInv's
-benefit cannot be explained solely by improved forecasting or dispatch
-optimisation, since Oracle-MPC already has access to perfect future
-information for both of those.
+This chapter addresses this gap by presenting a unified Constrained Markov
+Decision Process (CMDP) formulation that treats battery state-of-charge and
+diesel inventory as jointly controlled stochastic stocks under uncertainty.
+All decisions are taken at hourly resolution ($\Delta t = 1$\,h), consistent
+with the ITU/Zindi dataset used in this work (described in
+Chapter~\ref{chap:datasets-setup}).
 
-This reliability advantage is not obtained through disproportionate
-diesel consumption: aggregated across all sites and scenarios, RLInv
-consumes 205.7\,kWh of diesel versus B1's 198.5\,kWh (approximately
-3.6\% more), a modest increase consistent with a genuine operational
-trade-off rather than an inflated or unfair comparison.
 
-Notably, replacing rule-based dispatch with \emph{learned} dispatch
-while keeping classical $(s,S)$ ordering (row three) does not
-reproduce RLInv's advantage --- indeed it performs \emph{worse} than
-either rule-based baseline under monsoon and extreme conditions. This
-suggests that reinforcement learning alone, applied
-only to the dispatch decision, does not explain RLInv's performance.
+% ---------------------------------------------------------------
+\section{System Model}
+% ---------------------------------------------------------------
 
-MPC controls for optimality of dispatch given a forecast: it solves a
-provably optimal dispatch problem at each step, yet still under-performs
-RLInv because its planning horizon ($H{=}24$\,h) cannot see far enough
-ahead to plan for delivery delays that routinely exceed ten times that
-duration. % [MOVED per review: horizon-vs-lead-time mismatch table
-% (tab:mpc_horizon_mismatch) relocated to Methodology/Discussion --
-% it explains a result rather than reporting one.]
+The overall hybrid telecom tower and diesel-logistics system is illustrated in
+Figure~\ref{fig:system_diagram}.
 
-\textbf{Improving dispatch alone --- whether through reinforcement
-learning or through optimisation --- does not eliminate the degradation
-caused by externally managed replenishment.} Across the evaluated
-scenarios, the best overall performance is obtained when replenishment
-and dispatch are learned jointly. This
-motivates the mechanistic analysis in Section~\ref{sec:mechanism}.
-
-\begin{figure}[htb]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{fig_eens_comparison_v4.png}
-\caption{Overall policy performance across delivery scenarios. Policies,
-left to right: \textbf{B0} (threshold dispatch, fixed uncalibrated
-threshold ordering), \textbf{B1} (threshold dispatch, calibrated $(s,S)$
-ordering), \textbf{MPC} (model-predictive dispatch; planning horizon
-discussed in Chapter~\ref{chap:methodology}), \textbf{TrackB}
-($(s,S)$ ordering with a separately learned dispatch policy),
-\textbf{Oracle-MPC} (dispatch with perfect future information; an
-upper bound on achievable performance given optimal dispatch alone,
-not a deployable policy), and \textbf{RLInv} (the proposed joint
-policy). Error bars show 95\% confidence intervals over $n=100$
-(10 sites $\times$ 10 seeds).}
-\label{fig:eens_comparison}
+\resizebox{0.9\textwidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    node distance=2.6cm and 3.2cm,
+    box/.style={draw, rounded corners=4pt, minimum height=1.1cm,
+                minimum width=2.8cm, align=center, font=\small},
+    agent/.style={draw, fill=gray!12, rounded corners=6pt,
+                  minimum width=4.5cm, minimum height=1.4cm,
+                  align=center, font=\bfseries\small},
+    arrow/.style={->, thick},
+    obs/.style={->, dashed, thick, blue!70!black},
+    act/.style={->, dashed, thick, red!70!black}
+]
+
+% --- Energy components (top row) ---
+\node[box] (pv)   {Solar PV};
+\node[box, right=of pv]   (grid) {Grid Supply\\(intermittent)};
+\node[box, right=of grid] (bat)  {Battery Storage\\(LFP)};
+\node[box, right=of bat]  (dg)   {Diesel Generator\\(fixed $P_{\mathrm{rated}}^{\DG}$)};
+\node[box, right=of dg]   (load) {Telecom Load\\(BTS + ancillary)};
+
+% --- RL agent ---
+\node[agent, below=2.8cm of bat] (agent) {RL Agent};
+
+% --- Diesel logistics (bottom row) ---
+\node[box, below=5.0cm of dg] (tank) {Diesel Tank\\($\Inv_t$ litres)};
+\node[box, left=of tank]       (pipe) {Pipeline\\($\Pipe_t$)};
+\node[box, left=of pipe]       (sup)  {Fuel Supplier};
+
+% --- Physical flows ---
+\draw[arrow] (pv)   -- (bat);
+\draw[arrow] (grid) -- (bat);
+\draw[arrow] (bat)  -- (load);
+\draw[arrow] (dg)   -- (load);
+\draw[arrow] (sup)  -- node[above,font=\footnotesize] {$Q_t$ (order)} (pipe);
+\draw[arrow] (pipe) -- node[above,font=\footnotesize] {$A_t$ (arrival)} (tank);
+\draw[arrow] (tank) -- node[right,font=\footnotesize] {fuel} (dg);
+
+% --- Observations ---
+\draw[obs] (pv.south)   -- ++(0,-1.2) -| (agent.north west);
+\draw[obs] (grid.south) |- (agent.north);
+\draw[obs] (bat.south)  -- (agent.160);
+\draw[obs] (load.south) |- (agent.north east);
+\draw[obs] (pipe.north) -- ++(0,1.8) -| (agent.south west);
+
+\node[font=\footnotesize, above=7mm of agent, align=left]{
+  \textbf{State $s_t$:} PV output $P_t^{\PV}$, load $P_t^{\Load}$,\\
+  grid availability $G_t$, battery SoC,\\
+  diesel inventory $\Inv_t$, pipeline $\Pipe_t$,\\
+  time-of-day encoding $\hour_t$
+};
+
+% --- Actions ---
+\draw[act] (agent.60)  -- node[right,font=\footnotesize] {$\DG_t \in \{0,1\}$}    (dg.south);
+\draw[act] (agent.240) -- node[left,font=\footnotesize]  {$Q_t$}                   (sup.north);
+
+\end{tikzpicture}%
+}
+\caption{System architecture of the hybrid telecom tower under DG ON/OFF
+modelling. The RL agent observes energy states (PV, load, grid, battery SoC)
+and diesel logistics states (tank inventory $\Inv_t$ and in-transit pipeline
+$\Pipe_t$), and controls DG ON/OFF via
+$\DG_t \in \{0,1\}$ and diesel order quantity $Q_t$. Battery dispatch
+$P_t^{\Bat}$ is determined by an internal environment rule rather than a
+direct RL action.}
+\label{fig:system_diagram}
 \end{figure}
 
-\subsection{Performance across sites with different operating characteristics}
-\label{sec:site_breakdown}
+The system comprises rooftop solar PV, a lithium iron phosphate (LFP) battery
+bank, intermittent grid supply, a diesel generator operating at fixed power
+$P_{\mathrm{rated}}^{\DG}$ when switched on, and a finite diesel tank
+replenished by external truck deliveries subject to stochastic lead times.
+$G_t \in \{0,1\}$ is a binary grid availability indicator; when $G_t = 0$ the
+grid is unavailable due to outage and no power can be drawn from it.
+Decisions are taken every hour ($\Delta t = 1$\,h). The key modelling
+assumptions are: perfect state observability within each timestep;
+non-cancellable diesel orders once placed; and a minimum DG up-time of 2\,h
+(2~steps at hourly resolution) whenever the generator is switched on.
+The present study focuses on single-tower energy management using the
+ITU/Zindi dataset (10 sites, hourly resolution, 60 days each); multi-tower
+coordination, site-specific hardware variation, and long-horizon logistics
+network optimisation are outside the scope of the current work.
 
-The comparison above aggregates over all ten sites; it is worth
-checking that RLInv's advantage is not driven by a small number of
-sites while performing poorly elsewhere. Figure~\ref{fig:site_breakdown}
-reports RLInv and B1 mean EENS under normal logistics, computed
-separately for each site (each site's policy is trained and evaluated
-on that site individually), grouped by an independent difficulty
-classification (solar coverage, outage frequency, and battery
-autonomy; see Chapter~\ref{chap:methodology} for the classification
-criteria). RLInv matches or improves on
-B1 at every site, with the largest absolute gains on the hardest
-(lowest-autonomy, highest-outage) sites, where B1's reactive ordering
-is least able to keep pace with demand. This is a per-site robustness
-check, not a test of generalisation to unseen sites: each site's policy
-is trained specifically for that site, and no claim of transfer to
-sites outside the training set is made anywhere in this thesis.
+At each timestep, the power balance constraint must be satisfied:
+\begin{equation}
+P_t^{\Load} = P_t^{\PV} - P_t^{\Bat} + P_t^{\Grid} + \DG_t\,P_{\mathrm{rated}}^{\DG},
+\label{eq:balance}
+\end{equation}
+where $P_t^{\Grid} = G_t \cdot P_t^{\Grid,\max}$ is the grid power drawn, bounded
+by grid availability and the local connection capacity. The negative sign on
+$P_t^{\Bat}$ reflects the convention of Table~\ref{tab:notation}: a positive
+value denotes charging (power absorbed from the bus), so a discharging battery
+contributes positively to the supply side via the negative sign.
 
-\begin{figure}[htb]
+Although diesel inventory decisions operate on multi-day timescales, they
+directly constrain hourly dispatch feasibility. During grid outages or
+low-solar periods, the generator can only operate if sufficient fuel remains
+on site. A controller that optimises hourly energy dispatch without accounting
+for inventory state may therefore select locally optimal actions that lead to
+infeasible states in subsequent hours. Jointly modelling inventory and dispatch
+decisions allows the agent to anticipate future fuel constraints and maintain
+service reliability under uncertain delivery schedules.
+
+The formulation therefore differs from conventional telecom energy-management
+models in two respects. First, diesel fuel is represented as a stochastic
+inventory subject to delivery delays rather than as an unconstrained fuel
+source. Second, dispatch and inventory decisions are optimised jointly within
+a single sequential decision framework, allowing the controller to anticipate
+future fuel availability when making present operational decisions.
+
+% ---------------------------------------------------------------
+\section{Motivation for Reinforcement Learning}
+\label{sec:rl_motivation}
+% ---------------------------------------------------------------
+
+Although the system dynamics can be written analytically, the resulting
+control problem becomes a stochastic mixed-integer dynamic program once
+diesel ordering, generator switching, and dispatch decisions are
+coupled across time, requiring accurate probabilistic models of solar
+generation, load, grid outages, and delivery delay that are difficult
+to specify in closed form and vary across sites and seasons.
+Reinforcement learning avoids solving this optimisation problem from
+scratch at every step by learning a policy directly from interaction,
+and the trained policy generalises across sites and scenarios without
+re-solving. The algorithmic choices this motivates (PPO, action
+masking, and the unified-vs-hierarchical architecture question) are
+developed in Chapter~\ref{chap:methodology}.
+
+% ---------------------------------------------------------------
+\section{State Space}
+\label{sec:state}
+% ---------------------------------------------------------------
+
+The state vector observed by the agent at each hourly step is
+\begin{equation}
+s_t = \bigl[\,
+  \SoC_t,\;
+  \Inv_t,\;
+  \Pipe_t,\;
+  P_t^{\PV},\;
+  P_t^{\Load},\;
+  G_t,\;
+  \hour_t,\;
+  \tau_t,\;
+  R_t
+\,\bigr],
+\label{eq:state}
+\end{equation}
+where $\hour_t = (\sin(2\pi h/24),\,\cos(2\pi h/24))$ encodes the hour of
+day as a two-dimensional cyclic feature, $\tau_t$ is the elapsed time
+since the last order was placed, and $R_t$ is an estimated
+delivery-remaining-time signal that is identically zero throughout the
+main experiments (Chapter~\ref{chap:results}) and becomes informative
+only in a separate lognormal-forecast extension outside the primary
+scope of this thesis.
+
+The observation consists of nine logical components, corresponding to
+eleven scalar inputs after expansion of the cyclic hour-of-day encoding.
+Table~\ref{tab:state_sources} documents the data provenance of
+each component, a distinction the panel raised explicitly in Phase-I review.
+
+\begin{table}[ht]
 \centering
-\includegraphics[width=\textwidth]{fig_cross_site.png}
-\caption{Performance across sites with different operating
-characteristics: mean EENS (kWh/episode) for RLInv and B1, each
-trained and evaluated on its own site, normal logistics. X-axis label
-colour indicates the independent difficulty classification (green =
-Easy, orange = Medium, red = Hard).}
-\label{fig:site_breakdown}
-\end{figure}
-
-% ============================================================
-\section{Understanding Why RLInv Works}
-\label{sec:mechanism}
-% ============================================================
-
-The primary comparison establishes that RLInv consistently achieves
-the best overall performance. To understand which design choices
-contribute to this, three pre-registered ablations isolate one
-architectural difference at a time (Chapter~\ref{chap:methodology}).
-They are referred to here by what they test --- \textbf{joint
-replenishment and dispatch learning}, \textbf{action masking}, and
-\textbf{inventory observability} --- corresponding to the H1, H2, and
-H3 labels used in the methodology chapter and analysis scripts. All
-comparisons below are
-\emph{paired at the seed level}: the same 10 seeds are evaluated under
-every policy, so seed 42 under RLInv is matched against seed 42 under
-the comparator, not treated as an independent sample. Significance is
-therefore assessed with a paired $t$-test on the within-seed
-differences, with effect size Cohen's $d_z$ (mean paired difference /
-std of paired differences), following the corrected statistical
-methodology adopted after Phase 2 (an earlier, independent-samples test
-understated significance for this design).
-
-\subsection{Joint replenishment and dispatch learning}
-\label{sec:mechanism_h1}
-
-\textbf{Evidence.} A6 shares RLInv's reinforcement-learned dispatch
-policy and observation space, differing only in whether replenishment
-ordering is jointly learned (RLInv) or fixed to a calibrated classical
-$(s,S)$ rule (A6). This isolates the effect of jointly learned
-replenishment while keeping the dispatch architecture unchanged ---
-it does not isolate ``ordering'' as a standalone mechanism, since A6
-still learns its own dispatch policy under the same action space as
-RLInv. The paired comparison is scenario-dependent rather than
-uniform: RLInv is significantly better under Normal ($p=0.0175$,
-$d_z=-0.92$) and Extreme ($p=0.00035$, $d_z=-1.76$, a large effect),
-the difference is negligible under Delayed ($p=0.83$, $d_z=-0.07$),
-and under Monsoon the comparison is not statistically distinguishable
-and nominally favours A6 ($p=0.41$, $d_z=+0.27$). The same qualitative
-pattern holds when restricted to the three hardest sites alone (site2,
-site5, site7 --- the sites where at least one policy's mean EENS
-exceeds the constrained-site threshold in at least one scenario; this
-set differs from the site5/site10 pairing used for this purpose in
-Phase 2, superseded after the Phase 3 evaluation-horizon audit changed
-the EENS scale), so
-this is not an artefact of averaging across easier sites.
-
-\textbf{Interpretation.} The additional benefit attributable to
-jointly learned replenishment was observed under Normal and Extreme
-logistics, but not under Delayed or Monsoon conditions. Diagnostic
-inspection (constraint-violation counts, stockout events, uptime,
-diesel usage; Section~\ref{sec:behaviour}) shows zero hard violations
-for both policies throughout, so the Normal/Extreme difference is not
-explained by infeasible or erratic actions; it is consistent with
-RLInv's ability to anticipate that its own dispatch decisions can
-deplete inventory ahead of a delayed delivery, a benefit that is not
-uniformly present across every logistics regime tested.
-
-For context, RLInv also differs from TrackB (classical $(s,S)$
-ordering paired with a \emph{separately trained} dispatch policy, a
-more confounded comparator than A6 since both ordering and dispatch
-architecture differ). This gap is large and consistent
-(Table~\ref{tab:primary_comparison}: e.g.\ 11.29 vs.\ 174.50\,kWh
-monsoon, 53.85 vs.\ 152.13\,kWh extreme), but because TrackB confounds
-two design differences at once, it is used below to isolate
-\emph{masking} rather than as primary evidence for joint replenishment.
-
-\begin{figure}[htb]
-\centering
-\includegraphics[width=0.98\textwidth]{fig_ablation_h1_v3.png}
-\caption{Joint replenishment and dispatch learning: RLInv vs.\ A6 (primary
-comparison, dispatch architecture held constant) and vs.\ TrackB
-(shown for context; confounds ordering and dispatch architecture). Paired
-$t$-test significance shown where applicable: * $p<0.05$, ***
-$p<0.001$, ns = not significant. Error bars: 95\% CI, $n=10$ seeds.}
-\label{fig:ablation_h1}
-\end{figure}
-
-\subsection{Action masking}
-\label{sec:mechanism_h2}
-
-\textbf{Evidence.} Isolating action masking requires holding the
-ordering mechanism fixed: A6 (masked dispatch) and TrackB (unmasked
-dispatch) share an identical classical $(s,S)$ ordering rule and differ
-only in whether the dispatch policy's action space is constrained to
-feasible actions during training. There is no meaningful difference
-under Normal or Delayed logistics (identical or not significant), but a
-very large, highly significant effect under Monsoon ($d_z=-10.2$,
-$p<0.0001$) and Extreme ($d_z=-4.6$, $p<0.0001$), both favouring the
-masked (A6) variant. Separately, RLInv vs.\ A7 (vanilla PPO, no
-masking, otherwise identical to RLInv, so ordering is already jointly
-learned in both) shows no significant difference in any scenario
-($|d_z|\leq 0.37$ throughout).
-
-\textbf{Interpretation.} Action masking prevents severe dispatch-policy
-degradation under stressed logistics specifically when ordering is
-handled externally (the A6-vs-TrackB comparison) --- but this is not a
-clean decomposition of the full RLInv-vs-TrackB gap, since RLInv and
-TrackB also differ in whether ordering is jointly learned. The
-defensible claim is that masking accounts for a substantial part of
-the RLInv-TrackB gap under Monsoon/Extreme, not all of it. Separately,
-when ordering is already jointly learned (RLInv vs.\ A7), masking has
-no measurable effect on mean EENS: masking's benefit is conditional on
-ordering being externally decoupled, not a general main effect. Both
-A6 and TrackB record zero explicit hard constraint violations, so the
-effect is not about constraint enforcement \emph{per se} but about the
-quality of the dispatch policy learned --- action masking constrains
-exploration to the feasible subspace during training, which produces a
-policy that generalises more reliably to logistics conditions never
-seen during training (both variants were trained only under Normal
-logistics, $\mu=24$\,h, never on Delayed, Monsoon, or Extreme). This is best understood as
-an out-of-distribution robustness effect, not a general mean-EENS
-improvement, and not the entire explanation for RLInv's advantage over
-TrackB. The benefit of masking is therefore conditional on externally
-managed replenishment rather than a universal property of the learning
-algorithm.
-
-\begin{figure}[htb]
-\centering
-\includegraphics[width=0.6\textwidth]{fig_ablation_h2_v3.png}
-\caption{Action masking: A6 (masked) vs.\ TrackB (unmasked), $(s,S)$
-ordering held constant in both. Effect is large and significant under
-Monsoon/Extreme only. See text for why this is not interpreted as
-explaining the entire RLInv--TrackB gap, and for the separate,
-null RLInv-vs-A7 comparison.}
-\label{fig:ablation_h2}
-\end{figure}
-
-\subsection{Inventory observability}
-\label{sec:mechanism_h3}
-
-\textbf{Evidence.} A5 is trained identically to RLInv but with five
-logistics/inventory-related channels removed from its observation
-space (inventory level, pending-delivery flag, pending quantity,
-elapsed time since ordering, and the remaining delivery-time channel).
-RLInv achieves numerically lower mean EENS than A5 in every
-scenario, but the paired differences are small and do not reach
-statistical significance under the final evaluation protocol
-($|d_z|$ ranging 0.24--0.69; closest to significance under Extreme,
-$p=0.058$, still not significant at $\alpha=0.05$).
-
-\textbf{Interpretation.} Inventory observability produced consistently
-lower mean EENS, but the differences remained small and were not
-statistically distinguishable under the final evaluation protocol. This
-is reported as a genuine finding rather than omitted, since it
-clarifies which state information the learned policy actually exploits
---- the agent appears able to infer much of the required information
-indirectly from other observable variables (battery state-of-charge,
-grid availability, elapsed time since the last order). An earlier,
-smaller-scale pilot evaluation ($n=3$ seeds, two sites only) had
-suggested a larger, significant effect; that preliminary result is
-superseded by the full 10-site, 10-seed result above and is not
-re-cited as evidence in this thesis. This suggests that explicit
-inventory information plays a secondary role relative to the joint
-control architecture itself.
-
-\begin{figure}[htb]
-\centering
-\includegraphics[width=0.75\textwidth]{fig_ablation_h3_v3.png}
-\caption{Inventory observability: RLInv (observes tank fill fraction,
-pending-delivery status, and ordering-history channels) vs.\ A5
-(identical, these five logistics/inventory-related observations
-zeroed). RLInv is numerically lower in every scenario but the
-difference does not reach significance ($p=0.058$ at closest, Extreme
-scenario). Error bars: 95\% CI, $n=10$ seeds.}
-\label{fig:ablation_h3}
-\end{figure}
-
-
-
-% ============================================================
-\section{Behavioural Analysis}
-\label{sec:behaviour}
-% ============================================================
-
-A representative single-site trajectory (Figure~\ref{fig:trajectory})
-illustrates patterns also visible in aggregate across the full
-evaluation grid. Mean ordering frequency (RLInv, count of orders
-actually placed after action masking and tank-capacity clipping ---
-not the number of ordering actions attempted) decreased monotonically
-from 2.16 orders per episode under Normal logistics to 1.34 under
-Extreme disruption. This is consistent with the policy reducing new
-orders when delivery completion within the remaining evaluation
-horizon becomes increasingly unlikely; diesel generator use is
-curtailed selectively
-rather than run to exhaustion, and stockout events remain at zero even
-under extreme stress despite non-zero EENS --- unmet demand arises
-from graceful load-shedding, not uncontrolled fuel depletion.
-
-\begin{figure}[htb]
-\centering
-\includegraphics[width=\textwidth]{fig_trajectory.png}
-\caption{Representative single-episode trajectory (site2, monsoon
-scenario): inventory fraction, diesel orders placed, and unmet energy
-demand over the episode, compared between RLInv and B1.}
-\label{fig:trajectory}
-\end{figure}
-
-% ============================================================
-\section{Additional Experimental Evaluation}
-\label{sec:robustness}
-% ============================================================
-
-This section tests whether the preceding conclusions survive changes
-to reward design, physical sizing, and delivery-time modelling.
-
-\subsection{Sensitivity to delivery lead time}
-\label{sec:lead_sensitivity}
-
-The four scenarios used throughout this chapter (Normal, Delayed,
-Monsoon, Extreme) are discrete operating points; this subsection
-instead asks how performance evolves \emph{continuously} as mean
-delivery lead time increases from 0h to 336h, aggregated over all 10
-sites and evaluation seeds.
-
-\begin{figure}[htb]
-\centering
-\includegraphics[width=\textwidth]{fig_lead_sensitivity.png}
-\caption{Policy performance under increasing delivery delays. (a) Mean
-EENS vs.\ mean delivery lead time for RLInv, B1, and B0: all three
-degrade as delays increase, with RLInv consistently below B1 and B0
-consistently worst. (b) RLInv's absolute advantage over B1 across the
-same range. The advantage grows through 72h, then narrows from 120h
-onward --- not because RLInv stops working, but because at very long
-lead times physical tank capacity becomes the binding constraint for
-every policy: there is only so much fuel that can be pre-ordered
-regardless of ordering strategy, so all policies converge toward the
-same logistics-constrained floor.}
-\label{fig:lead_sensitivity}
-\end{figure}
-
-RLInv's advantage over B1 is small at short lead times (1.3\,kWh at
-24h), peaks at 29.5\,kWh around 72h, and narrows to 8.6\,kWh by 336h
-even though RLInv remains numerically better throughout (134.3 vs.\
-142.9\,kWh at 336h). This continuous view is consistent with, and adds
-resolution to, the four discrete scenarios reported elsewhere in this
-chapter.
-
-\subsection{Reward Function Sensitivity}
-Ten reward-weight configurations were evaluated, independently varying
-the unmet-demand penalty ($\lambda \in \{25,\dots,500\}$, a 20-fold
-range), the stockout penalty, the grid-cost weight, and the constraint
-violation penalty. Extreme-scenario EENS varied by only 3.32\,kWh
-(167.74--171.06\,kWh) across the entire sweep. Separately, training
-with $\gamma \in \{0.95, 0.99, 0.995\}$ produced results within
-2.4\,kWh of one another on every scenario, resolving the discrepancy
-between the proposal's stated discount factor ($\gamma{=}0.995$) and
-the value actually used ($\gamma{=}0.99$).
-
-\begin{figure}[htb]
-\centering
-\includegraphics[width=\textwidth]{fig_reward_sensitivity.png}
-\caption{Robustness of the reward-weight sweep (a) and discount-factor
-sweep (b) to the primary comparison, evaluated on the three hardest
-sites under the monsoon scenario, 3 seeds $\times$ 400k training
-steps.}
-\label{fig:reward_sensitivity}
-\end{figure}
-
-Neither reward weighting nor discount factor materially changes the
-primary comparison in Section~\ref{sec:primary_comparison}.
-
-\subsection{Tank capacity sensitivity}
-RLInv's advantage over B1 was evaluated across five tank capacities
-(24\,h, 48\,h, 72\,h baseline, 144\,h, and 336\,h of buffer) on the
-three hardest sites under delayed logistics
-(Table~\ref{tab:tank_sensitivity}).
-
-\begin{table}[htb]
-\centering
-\caption{Tank capacity sensitivity: mean EENS (kWh), 3 hardest sites,
-delayed scenario, $n=10$ seeds.}
-\label{tab:tank_sensitivity}
-\begin{tabular}{lrrr}
+\small
+\begin{tabular}{lll}
 \toprule
-Tank capacity & RLInv & B1 & RLInv advantage \\
+\textbf{Variable} & \textbf{Source} & \textbf{Notes} \\
 \midrule
-24\,h (0.33$\times$) & 215.554 & 283.553 & 67.999 \\
-48\,h (0.67$\times$) & 42.876 & 94.682 & 51.806 \\
-72\,h (1.0$\times$, baseline) & 11.949 & 44.630 & 32.681 \\
-144\,h (2.0$\times$) & 0.000 & 4.812 & 4.812 \\
-336\,h (4.67$\times$) & 0.000 & 0.000 & 0.000 \\
+$P_t^{\PV}$   & ITU/Zindi dataset  & Direct column \\
+$P_t^{\Load}$ & ITU/Zindi dataset  & Direct column \\
+$G_t$         & ITU/Zindi dataset  & Direct column \\
+$\SoC_t$      & Simulator state    & Evolved via Eq.~\eqref{eq:soc} from real initial values \\
+$\Inv_t$      & Simulator state    & Derived from ITU fuel-level column and tank capacity \\
+$\Pipe_t$     & Synthetic          & Log-normal lead-time overlay; sole synthetic component \\
+$\hour_t$     & Derived            & Computed from ITU timestamp \\
+$\tau_t$      & Simulator state    & Counter reset on each new order; always active \\
+$R_t$         & Synthetic (inactive) & Present in the observation vector but fixed at zero for
+                                       every experiment reported in this thesis \\
 \bottomrule
 \end{tabular}
+\caption{Data provenance of each state variable. $\Pipe_t$ and $R_t$ are
+introduced synthetically; $R_t$ additionally never takes a non-zero
+value anywhere in the reported experiments. The remaining components are
+either obtained directly from the ITU/Zindi dataset or evolved from
+dataset-grounded initial conditions.}
+\label{tab:state_sources}
 \end{table}
 
-\begin{figure}[htb]
-\centering
-\includegraphics[width=0.8\textwidth]{fig_tank_sensitivity.png}
-\caption{RLInv's advantage over B1 as a function of tank capacity,
-relative to each scenario's mean delivery lead time. The advantage
-vanishes once tank capacity is large enough to absorb delivery
-uncertainty without proactive ordering.}
-\label{fig:tank_sensitivity}
-\end{figure}
+The pipeline quantity is capped at one pending order at any time: if a
+delivery is already in transit, the feasible action set restricts $Q_t = 0$
+until the pending order arrives (Section~\ref{sec:constraints}).
 
-RLInv's advantage decreases monotonically as tank capacity grows, from
-68.0\,kWh at 24\,h to 0\,kWh at 336\,h: inventory coupling matters
-specifically when tank capacity is small relative to delivery lead
-time, and a reactive rule-based policy becomes adequate once the
-physical buffer is large enough to absorb the same uncertainty.
+% ---------------------------------------------------------------
+\section{Action Space}
+\label{sec:action}
+% ---------------------------------------------------------------
 
-\subsection{Distributional robustness}
-The evaluation grid above assumes delivery lead times follow a
-geometric distribution. To test sensitivity to this modelling choice,
-additional evaluation runs were conducted under three alternative
-delivery-time distributions with matched scenario means: lognormal
-($\sigma=0.5$), lognormal ($\sigma=0.8$, heavier tail), and Weibull
-($k=2$).
+At each hourly step the agent selects the control actions
+\begin{equation}
+a_t = \bigl[\,
+  \DG_t,\;
+  Q_t
+\,\bigr],
+\label{eq:action}
+\end{equation}
+with
+\[
+\DG_t \in \{0,1\}, \qquad
+Q_t \in \{0,\,500,\,1000,\,1500,\,2000\}\;\text{litres.}
+\]
 
-\begin{figure}[htb]
-\centering
-\includegraphics[width=0.85\textwidth]{fig_distributional_robustness.png}
-\caption{EENS under the training (geometric) delivery-time
-distribution and three alternative distributions --- lognormal
-($\sigma=0.5$), lognormal ($\sigma=0.8$), and Weibull ($k=2$) --- for
-RLInv, B1, and MPC across all four scenarios. Log-scaled $y$-axis to
-accommodate the extreme-scenario range.}
-\label{fig:distributional_robustness}
-\end{figure}
+Here, $\DG_t$ controls generator commitment and $Q_t$ controls diesel
+replenishment. Battery dispatch $P_t^{\Bat}$ is determined by an
+internal environment rule that prioritises renewable and battery energy
+before diesel generation, rather than being a direct RL action.
 
-Policy rankings are preserved across all four scenarios and all three
-alternative distributions, and the mean absolute change in EENS
-relative to the training (geometric) distribution is smaller for RLInv
-than for B1 in the lognormal comparisons (4.56\,kWh vs.\ 7.62\,kWh at
-$\sigma=0.5$).
+The five discrete order quantities reflect standard tanker delivery sizes used
+by Indian telecom operators, covering the practical range of replenishment
+volumes. The action space therefore consists of two discrete control
+decisions: generator commitment and diesel order quantity. Infeasible
+actions are excluded from the feasible set $\mathcal{C}(s_t)$ defined in
+Section~\ref{sec:cmdp}; the implementation of this feasible-set
+enforcement is described in Chapter~\ref{chap:methodology}.
 
-RLInv's advantage is not an artefact of the parametric form assumed for
-delivery delay, and if anything is less sensitive to this modelling
-choice than the classical baseline.
+% ---------------------------------------------------------------
+\section{System Dynamics and Uncertainty}
+\label{sec:dynamics}
+% ---------------------------------------------------------------
 
-\subsection{Stochastic grid outage}
-This comparison evaluates RLInv under a stochastic (Markov-chain) grid
-outage model rather than the deterministic weekly template used
-elsewhere in this chapter. The two policies compared are trained
-identically (400k steps) and evaluated on the same 3 hard sites
-(site2, site5, site7), the same 3 seed realisations, and the same 10
-episodes per (site, scenario) cell in both cases --- a smaller
-evaluation grid than the 10-site comparison used elsewhere in this
-chapter, since this experiment was run only on the sites where
-logistics stress is most likely to be informative.
+\paragraph{Battery dynamics.}
+Battery state-of-charge evolves according to
+\begin{equation}
+\SoC_{t+1} = \SoC_t
+  + \frac{\eta_{\ch}\,\max(P_t^{\Bat},0)\,\Delta t
+          - \max(-P_t^{\Bat},0)\,\Delta t\,/\,\eta_{\dis}}
+         {E_{\Bat}}.
+\label{eq:soc}
+\end{equation}
 
-\begin{table}[htb]
-\centering
-\caption{EENS (kWh) under the stochastic grid outage model:
-deterministic-grid-trained policy evaluated on the stochastic grid,
-vs.\ a policy trained and evaluated on the stochastic grid. 3 hard
-sites, 3 seeds, 10 episodes per cell.}
-\label{tab:stochastic_grid}
-\begin{tabular}{lrrr}
-\toprule
-Scenario & Deterministic-trained (eval on stochastic) & Stochastic-trained & Change \\
-\midrule
-Normal & 2.96 & 0.24 & $-$91.9\% \\
-Delayed & 21.49 & 27.30 & $+$27.0\% \\
-Monsoon & 42.62 & 61.12 & $+$43.4\% \\
-Extreme & 153.27 & 181.08 & $+$18.1\% \\
-\bottomrule
-\end{tabular}
-\end{table}
+\paragraph{Diesel inventory dynamics.}
+On-site fuel inventory evolves as
+\begin{equation}
+\Inv_{t+1} = \min\!\bigl(C^{\Tank},\;
+  \Inv_t - r_{\DG}\,P_t^{\DG}\,\Delta t + A_t\bigr),
+\label{eq:inv}
+\end{equation}
+where the arrival term is
+\begin{equation}
+A_t =
+\begin{cases}
+  Q_{t-L_t}, & \text{if a pending order's lead time expires at step } t, \\
+  0,          & \text{otherwise,}
+\end{cases}
+\label{eq:arrival}
+\end{equation}
 
-The policy trained under stochastic grid outages achieved lower EENS
-under Normal conditions but higher EENS under Delayed, Monsoon and
-Extreme logistics. The largest relative degradation
-occurs under the Monsoon scenario, indicating a trade-off between
-adapting to grid uncertainty and conserving diesel under prolonged
-delivery disruption. This is reported as an identified limitation
-rather than resolved, and, given the narrower evaluation grid used
-here, is not generalised beyond the three sites tested.
+\paragraph{Pipeline dynamics.}
+The pipeline state $\Pipe_t$ represents the quantity of diesel currently in
+transit from a previously placed order. When the sampled lead time expires,
+the corresponding order quantity $Q_{t-L_t}$ is transferred to on-site
+inventory via the arrival term $A_t$ (Equation~\eqref{eq:arrival}); until
+that point $\Pipe_t = Q_{t-L_t}$ and no further orders may be placed. In
+the absence of a pending order, $\Pipe_t = 0$.
 
-\subsection{RLInv-DA: exploratory extension motivated by reviewer feedback}
-\label{sec:rlinv_da}
+\paragraph{Stochastic lead time.}
+Lead time in days is drawn from a log-normal distribution at the moment
+an order is placed:
+\begin{equation}
+L_t^{\text{days}} \;\sim\; \LogNormal(\mu,\,\sigma=0.6),
+\label{eq:leadtime}
+\end{equation}
+with $\mu = 2.5$\,days under the \emph{normal logistics} scenario and
+$\mu = 5.0$\,days under the \emph{delayed logistics} scenario. Both
+scenarios are evaluated in Chapter~\ref{chap:results} to test robustness
+under supply-chain disruption. The lead time in hourly timesteps is
+\begin{equation}
+L_t = \lceil 24\,L_t^{\text{days}} \rceil,
+\label{eq:leadtime_steps}
+\end{equation}
+consistent with $\Delta t = 1$\,h.
 
-Reviewer comments received during the Phase~2 evaluation raised two
-related questions: whether the diesel supply chain could be modelled
-more realistically, including vendor-side considerations
-(Comment~9), and whether the reordering strategy could track and
-predict delivery delays rather than treating each delivery as an
-independent random event (Comment~10). This subsection reports an
-exploratory extension, RLInv-DA, designed to address both questions
-within a scope appropriate to the thesis, without altering the main
-results reported in Sections~\ref{sec:primary_comparison}--\ref{sec:mechanism}.
+The log-normal distribution for $L_t^{\text{days}}$ is standard in remote
+diesel logistics modelling \citep{srinivasan2013,shen2011}. Because actual
+delivery records are unavailable in the ITU/Zindi dataset, $\Pipe_t$ is the
+only state component generated synthetically; all other dynamics are driven
+directly by real sensor measurements.
 
-RLInv-DA extends RLInv with a single additional observation,
-$\widehat{L}_t$, an exponentially weighted moving average of realised
-delivery delays updated on each arrival ($\widehat{L}_t = 0.3\,
-L_t^{\mathrm{realised}} + 0.7\, \widehat{L}_{t-1}$), evaluated under a
-two-state (Normal/Disrupted) supplier-regime environment that gives
-delivery delays the temporal correlation an EWMA needs to have
-anything to detect. Alternative approaches, including predictive
-lead-time models and more detailed supply-chain formulations, were
-considered during the design phase but were not adopted because they
-addressed different problem formulations or required assumptions
-beyond the scope of this study (see Chapter~\ref{chap:methodology}).
-Both RLInv-DA and a base-regime RLInv policy were
-retrained from scratch under identical conditions, and diagnostic
-trace analysis confirmed the estimator updates correctly and that
-ordering decisions consistently occur after each update --- the policy
-has genuine opportunity to use the signal.
+% ---------------------------------------------------------------
+\section{Constraints}
+\label{sec:constraints}
+% ---------------------------------------------------------------
 
-\textbf{Results.} Unless otherwise stated, results in this subsection
-are aggregated over 3 sites $\times$ 3 training seeds $\times$ 4
-scenarios $\times$ 10 evaluation episodes per variant (720 episodes
-total). Table~\ref{tab:rlinv_da_results} reports EENS across
-all four scenarios for both variants. Confidence intervals overlap in every scenario, and no
-consistent direction of improvement emerges: across the full grid of
-36 site--seed--scenario comparisons, RLInv-DA achieved lower EENS in 5
-cases, higher EENS in 11 cases, and statistically indistinguishable
-performance in the remaining 20. Restricting to the two scenarios
-where delivery-delay tracking is most plausibly informative (delayed
-and monsoon), the pattern is unchanged (3 better, 5 worse, 10
-comparable of 18), and an extended evaluation across normal and
-extreme logistics confirms this is not an artefact of scenario choice
-rather than a genuine absence of consistent benefit: both policies are
-indistinguishable under normal logistics, where the control problem is
-too easy to differentiate, and differ by under 1\% under extreme
-logistics, where both policies fail severely regardless of delay
-awareness.
+Three categories of hard constraint are enforced with zero tolerance in
+closed-loop operation.
 
-\begin{table}[htb]
-\centering
-\caption{RLInv-DA performance: mean EENS (kWh) with 95\% confidence
-intervals, aggregated over 3 sites $\times$ 3 seeds.}
-\label{tab:rlinv_da_results}
-\begin{tabular}{lrr}
-\toprule
-Scenario & Base-regime RLInv & RLInv-DA (EWMA) \\
-\midrule
-Normal & 0.000 & 0.000 \\
-Delayed & 4.408 [0.86, 7.95] & 3.779 [0.13, 7.43] \\
-Monsoon & 20.297 [10.22, 30.37] & 23.111 [12.37, 33.86] \\
-Extreme & 233.632 [202.2, 265.0] & 235.429 [204.0, 266.9] \\
-\bottomrule
-\end{tabular}
-\end{table}
+The \emph{battery constraints} require that state-of-charge remains within
+the safe operating window at all times, i.e.\ $0.20 \leq \SoC_{t+1} \leq 1.00$
+(corresponding to 80\% maximum depth-of-discharge for LFP cells), and that
+the charging and discharging power satisfies
+$-P_{\max}^{\dis} \leq P_t^{\Bat} \leq P_{\max}^{\ch}$. The feasible battery
+state transitions are obtained analytically from Equation~\eqref{eq:soc}
+and constrain the internal battery-dispatch rule at each step.
 
-% [FIGURE] fig_rlinv_da.png here (4-panel, all scenarios --- confirmed final)
+The \emph{generator constraint} requires that the DG may only be switched on
+if sufficient fuel remains to sustain at least 2\,h of continuous operation
+at rated power, i.e.\ $\Inv_t \geq r_{\DG}\,P_{\mathrm{rated}}^{\DG}\cdot 2$.
+If this condition is not met, $\DG_t = 1$ is infeasible in that state.
+Additionally, once the generator is switched on it must remain on for a
+minimum of 2\,h (2~steps), reflecting realistic start-up costs and equipment
+limitations.
 
-Behavioural analysis across 72 matched representative trace episodes
-(3 sites $\times$ 3 seeds $\times$ 4 scenarios $\times$ 2 variants,
-one representative episode per site--seed--scenario combination rather
-than an average over the full 10-episode evaluation grid used for the
-performance results above)
-(Table~\ref{tab:rlinv_da_behaviour}) shows that the EWMA-aware policy
-is behaviourally active rather than ignoring the additional
-observation, but its effect is scenario-dependent and not uniformly
-protective. Under monsoon conditions, RLInv-DA orders later and at
-lower inventory than the base-regime policy (mean inter-order interval
-150.0\,h versus 137.2\,h, +9.4\%); under extreme conditions the effect
-reverses, with RLInv-DA ordering slightly earlier and at higher
-inventory (160.0\,h versus 164.3\,h). This reversal is consistent with
-an estimator that responds to the overall level of realised delay
-specific to each regime: the persistently long delays characteristic
-of extreme logistics push the EWMA estimate upward, prompting earlier
-ordering, whereas the comparatively shorter and more variable delays
-under monsoon conditions do not sustain the same elevated estimate,
-occasionally licensing later ordering that increases exposure.
+The \emph{ordering constraint} prevents a new diesel order from being placed
+while a delivery is already in transit ($\Pipe_t > 0$), making any $Q_t > 0$
+infeasible in that state, and caps the maximum order quantity at remaining
+tank headroom, i.e.\ $Q_t \leq C^{\Tank} - \Inv_t$. Together, the three
+constraint categories define the feasible action set $\mathcal{C}(s_t)$
+incorporated into the CMDP tuple of Section~\ref{sec:cmdp}. Their
+implementation in the training algorithm is described in
+Chapter~\ref{chap:methodology}.
 
-\begin{table}[htb]
-\centering
-\caption{RLInv-DA behavioural mechanism: mean inventory fraction at
-order placement and mean inter-order interval, 72 matched representative
-trace episodes (one per site--seed--scenario combination, not a
-10-episode average).}
-\label{tab:rlinv_da_behaviour}
-\begin{tabular}{lrrrr}
-\toprule
-& \multicolumn{2}{c}{Inventory at order} & \multicolumn{2}{c}{Inter-order interval (h)} \\
-Scenario & Base & EWMA & Base & EWMA \\
-\midrule
-Normal & 0.650 & 0.669 & 101.5 & 103.4 \\
-Delayed & 0.628 & 0.628 & 108.3 & 112.6 \\
-Monsoon & 0.588 & 0.566 & 137.2 & 150.0 \\
-Extreme & 0.596 & 0.603 & 164.3 & 160.0 \\
-\bottomrule
-\end{tabular}
-\end{table}
+% ---------------------------------------------------------------
+\section{Objective Function}
+\label{sec:objective}
+% ---------------------------------------------------------------
 
-% [FIGURE] fig_rlinv_da_behaviour.png here (4-panel mechanism figure --- confirmed final)
+The agent minimises the expected total discounted cost over an episode:
+\begin{align}
+J(\pi) = \mathbb{E}\Biggl[\,\sum_{t=0}^{T} \gamma^t \Bigl(
+    &\;c_{\Grid}\,P_t^{\Grid}
+     + c_{\mathrm{diesel}}\,r_{\DG}\,P_t^{\DG}\,\Delta t
+     + c_{\order}\,\mathbf{1}(Q_t > 0)
+     \notag \\[4pt]
+    &+ c_{\hold}\,\Inv_t
+     + c_{\degrad}\,|P_t^{\Bat}|
+     \notag \\[4pt]
+    &+ c_{\COtwo}\,\EF_{\mathrm{diesel}}\,r_{\DG}\,P_t^{\DG}\,\Delta t
+     \notag \\[4pt]
+    &+ \lambda_{\short}\,\max\!\bigl(0,\;
+       r_{\DG}\,P_t^{\DG}\,\Delta t - \Inv_t\bigr)
+\Bigr)\Biggr],
+\label{eq:objective}
+\end{align}
+where $\gamma = 0.995$ gives an effective planning horizon of approximately
+200\,h ($\approx 8$\,days), sufficient to cover realistic lead times.
 
-\textbf{Interpretation.} The contribution of this extension is not
-that explicit delay estimation improved reliability. It is that,
-under a controlled supplier-regime model designed specifically to
-give such estimation a genuine opportunity to help, the mechanism was
-implemented, verified, and evaluated, and found to provide limited
-additional benefit beyond the information already available to RLInv
-through its existing inventory and pipeline state. This is reported as
-a completed, negative finding addressing both reviewer comments,
-rather than deferred as future work.
+The cost terms are: $c_{\Grid}$, the grid electricity cost coefficient;
+$c_{\mathrm{diesel}}$, the diesel fuel cost in Rs./litre; $c_{\order}$, a
+fixed administrative cost per order placed; $c_{\hold}$, an inventory
+holding cost coefficient; $c_{\degrad}$, a battery degradation cost
+proportional to total charge throughput; $c_{\COtwo}$, a carbon cost
+coefficient (Rs.\ per kg CO$_2$e); $\EF_{\mathrm{diesel}} = 2.68$\,kg\,CO$_2$e/litre,
+the diesel emission factor; and $\lambda_{\short}$, a large penalty
+coefficient applied whenever the generator would consume more fuel than is
+available on-site. All cost coefficients are calibrated from published Indian telecom
+operator data \cite{IOCL_Prices2024, SERC_Tariff2024, Operator_Diesel2023}.
 
-% [FIGURE] rlinv_da_design_rationale.tex (TikZ workflow diagram) here
-% --- place in main body per design discussion, immediately before
-% Section~\ref{sec:results_summary}, not in an appendix.
+The soft stockout penalty ($\lambda_{\short}$ term) discourages the policy
+from approaching the fuel-shortage boundary in states where the feasibility
+constraint cannot be applied analytically. In the constrained-site evaluation
+reported in Chapter~\ref{chap:results}, no hard violations were observed during
+policy rollout.
 
-% ============================================================
-\section{Summary}
-\label{sec:results_summary}
-% ============================================================
+Although the optimisation objective is expressed as discounted cumulative
+cost, policy performance is evaluated in Chapter~\ref{chap:results} using
+operational metrics including Expected Energy Not Served (EENS), diesel
+consumption, network uptime, and a cost proxy, which together reflect the
+trade-offs that matter to telecom tower operators.
 
-RLInv achieves the lowest EENS of all evaluated policies across all
-four delivery scenarios, with its advantage widening as delivery
-uncertainty increases before narrowing under the most extreme
-logistics stress, where fuel availability becomes the binding physical
-constraint for all policies. Ablation analysis attributes this
-advantage principally to joint optimisation of ordering and dispatch
-(H1) and to the out-of-distribution robustness conferred by action
-masking (H2); explicit inventory state observation was not found to be
-necessary for this performance (H3). These conclusions are robust to
-reward weighting and discount factor choice, and a genuine, clearly
-scoped limitation is identified under the joint stochastic
-grid-outage/extreme-logistics condition.
+% ---------------------------------------------------------------
+\section{Formal CMDP Definition}
+\label{sec:cmdp}
+% ---------------------------------------------------------------
+
+The hybrid telecom energy-management problem is modelled as a discounted
+episodic Constrained Markov Decision Process defined by the tuple
+\[
+(\mathcal{S},\,\mathcal{A},\,\mathcal{P},\,c,\,\mathcal{C},\,\gamma),
+\]
+where $\mathcal{S} \subset \mathbb{R}^{11}$ is the state space defined in
+Section~\ref{sec:state}, $\mathcal{A}$ is the action space of
+Section~\ref{sec:action}, $\mathcal{P}$ captures the stochastic battery and
+inventory dynamics of Section~\ref{sec:dynamics}, $c$ is the cost function
+of Equation~\eqref{eq:objective}, and $\gamma = 0.995$. Operational
+constraints define a feasible action set $\mathcal{C}(s_t)$ for each state;
+how these feasibility requirements are enforced during policy learning is
+detailed in Chapter~\ref{chap:methodology}.
+
+Training episodes run for 720 steps (30 days), ensuring that the policy
+observes multiple fuel-delivery cycles and representative solar variability
+patterns. Evaluation episodes use the held-out 15-day test split of the
+ITU/Zindi dataset to assess policy performance on unseen operating conditions.
+
+% ---------------------------------------------------------------
+\section{Unified versus Decomposed Architecture}
+\label{sec:unified_vs_hier}
+% ---------------------------------------------------------------
+
+A natural modelling question is whether the diesel ordering decision
+($Q_t$, multi-day timescale) and the energy dispatch decisions (generator
+commitment and battery behaviour, hourly timescale) should be optimised
+jointly within a single agent or decomposed into separate controllers
+operating at their natural timescales. This question was raised explicitly
+in the Phase-I reviewer comments and is directly addressed by the
+experimental design of this work.
+
+The unified formulation presented in this chapter---in which a single
+joint agent controls diesel ordering and generator commitment while battery
+behaviour is handled by the environment---is referred to as \textbf{RLInv}
+throughout. The alternative \textbf{Track~B} architecture pairs a classical
+$(s,S)$ inventory policy for diesel ordering with a separate PPO agent for
+dispatch, allowing each sub-problem to be solved at its natural timescale.
+The two architectures are evaluated empirically in
+Chapter~\ref{chap:results}.
+
+The comparison between unified and hierarchical architectures allows the
+following hypotheses to be tested.
+
+\textbf{H1 (Coupling hypothesis).} Joint optimisation of diesel ordering and
+energy dispatch by a single agent provides measurable reliability or
+operational cost benefits relative to decomposed control, in which
+replenishment and dispatch decisions are managed separately.
+
+
+\textbf{H2 (Action masking hypothesis).} Incorporating feasibility-aware
+action masking improves reliability under stressed logistics when diesel
+replenishment is externally managed, while providing little measurable
+benefit when replenishment is learned jointly.
+
+\textbf{H3 (Inventory-state hypothesis).} Including explicit diesel inventory
+state in the observation improves ordering decisions, relative to an ablated
+agent in which the inventory- and delivery-related observation channels are
+removed from the observation vector.
+
+These hypotheses are stated here, at the level of the problem formulation,
+because they directly shape the choice of state space, action space, and
+ablation variants. The formulation above is intentionally designed so that
+the role of inventory state, safety constraints, and joint optimisation can
+each be isolated and empirically tested through the comparisons defined above.
+Results for all three hypotheses are reported in Chapter~\ref{chap:results},
+and conclusions are drawn in Chapter~\ref{chap:conclusion} regardless of the
+direction of the findings.
+
+% ---------------------------------------------------------------
+\section{Research Objectives and Contributions}
+\label{sec:objectives}
+% ---------------------------------------------------------------
+
+The formulation presented in this chapter serves three related objectives:
+it enables joint dispatch and diesel-ordering control within a single
+sequential decision framework; it incorporates stochastic delivery-pipeline
+dynamics into the state representation, capturing replenishment uncertainty
+that existing energy-management formulations do not model; and it encodes
+hard operational feasibility requirements directly in the decision problem,
+rather than relying on penalty terms alone.
+
+The primary contribution of this chapter is the formulation of telecom tower
+energy management as a constrained sequential decision problem that jointly
+models diesel inventory logistics and energy dispatch. The chapter defines the
+unified state--action representation, the stochastic delivery-pipeline model,
+and the experimental hypothesis structure used to evaluate the formulation.
+The empirical evaluation of these hypotheses is presented in
+Chapter~\ref{chap:results}.
+
+\paragraph{Stakeholder impact.}
+Rural telecom infrastructure connects remote populations to emergency
+communications, mobile banking, and digital public services.  India operates
+several hundred thousand remote towers, many in weak-grid areas where diesel
+logistics account for 30--40\% of operational expenditure~\citep{gsma2025b,trai2024}.
+Tower outages in these settings directly interrupt critical services and
+disproportionately affect underserved communities.  Improving energy and
+inventory management at these sites therefore has direct implications for
+service reliability, operating cost, and carbon emissions.  The formulation
+presented in this chapter targets precisely these drivers by jointly
+optimising dispatch and replenishment decisions under realistic supply-chain
+uncertainty.
