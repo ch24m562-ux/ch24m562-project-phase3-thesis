@@ -245,26 +245,35 @@ $p<0.001$, ns = not significant. Error bars: 95\% CI, $n=10$ seeds.}
 \subsection{Action masking}
 \label{sec:mechanism_h2}
 
-\textbf{Evidence.} Isolating action masking requires holding the
-ordering mechanism fixed: A6 (masked dispatch) and TrackB (unmasked
-dispatch) share an identical classical $(s,S)$ ordering rule and differ
-only in whether the dispatch policy's action space is constrained to
-feasible actions during training. There is no meaningful difference
+\textbf{Evidence.} A6 (masked dispatch) and TrackB (unmasked
+dispatch) share an identical classical $(s,S)$ ordering rule; A6 retains
+the full 11-dimensional observation while TrackB's dispatch agent uses a
+reduced 6-dimensional observation (Chapter~\ref{chap:methodology}), so
+this comparison differs in both masking and observation design, not
+masking alone. There is no meaningful difference
 under Normal or Delayed logistics (identical or not significant), but a
 very large, highly significant effect under Monsoon ($d_z=-10.2$,
 $p<0.0001$) and Extreme ($d_z=-4.6$, $p<0.0001$), both favouring the
 masked (A6) variant. Separately, RLInv vs.\ A7 (vanilla PPO, no
 masking, otherwise identical to RLInv, so ordering is already jointly
-learned in both) shows no significant difference in any scenario
+learned in both, and both share the same 11-dimensional observation)
+shows no significant difference in any scenario
 ($|d_z|\leq 0.37$ throughout).
 
-\textbf{Interpretation.} Action masking prevents severe dispatch-policy
-degradation under stressed logistics specifically when ordering is
-handled externally (the A6-vs-TrackB comparison) --- but this is not a
+\textbf{Interpretation.} The ablation results are consistent with an
+architecture-dependent benefit from masking under stressed logistics
+when replenishment is externally managed (the A6-vs-TrackB comparison).
+However, the A6--TrackB comparison also differs in observation design,
+so the resulting gap should not be attributed to masking alone; the
+cleaner masking comparison is RLInv vs.\ A7, which found no significant
+mean-EENS effect. This is also
+not a
 clean decomposition of the full RLInv-vs-TrackB gap, since RLInv and
 TrackB also differ in whether ordering is jointly learned. The
-defensible claim is that masking accounts for a substantial part of
-the RLInv-TrackB gap under Monsoon/Extreme, not all of it. Separately,
+defensible claim is that masking is associated with a substantial part of
+the RLInv-TrackB gap under Monsoon/Extreme, not all of it, and that this
+association is confounded with the observation-design difference between
+A6 and TrackB. Separately,
 when ordering is already jointly learned (RLInv vs.\ A7), masking has
 no measurable effect on mean EENS: masking's benefit is conditional on
 ordering being externally decoupled, not a general main effect. Both

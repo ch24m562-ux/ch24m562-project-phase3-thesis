@@ -101,14 +101,20 @@ ordering has room to matter, or severe enough that classical
 heuristics under-react; at intermediate stress (Monsoon), a
 well-calibrated classical rule is difficult to improve on.
 
-\textbf{Action masking (H2).} Holding the ordering mechanism fixed
-(A6 vs.\ TrackB), masking produces a large, highly significant effect,
+\textbf{Action masking (H2).} With the ordering mechanism held fixed
+(A6 vs.\ TrackB, though these also differ in observation design ---
+Chapter~\ref{chap:methodology}), masking is associated with a large,
+highly significant effect,
 but only under Monsoon and Extreme --- conditions the masked and
 unmasked dispatch policies were never trained under. This is best
 understood as an out-of-distribution robustness effect: masking
 constrains exploration to the feasible action subspace during
 training, producing a dispatch policy that generalises more reliably
-to logistics conditions harsher than anything seen in training.
+to logistics conditions harsher than anything seen in training. Because
+A6 and TrackB also differ in observation dimensionality, this effect
+should not be attributed to masking alone; the cleaner masking
+comparison, RLInv vs.\ A7 (which share the same observation space),
+found no significant effect.
 Separately, when ordering is already jointly learned (RLInv vs.\ A7),
 masking has no measurable effect on mean EENS at any scenario ---
 masking's benefit is conditional on externally managed replenishment,

@@ -74,7 +74,7 @@ presented in Chapter~\ref{chap:datasets-setup}.
 \node[box, below of=env]    (train)   {RL Training\\{\scriptsize MaskablePPO, 10 seeds}};
 \node[box, below of=train]  (policy)  {Learned Policy\\{\scriptsize Frozen weights}};
 \node[box, below of=policy] (eval)    {Evaluation\\{\scriptsize 10 sites, 4 scenarios, 10 episodes/seed}};
-\node[box, below of=eval]   (metrics) {Operational Metrics\\{\scriptsize EENS, Diesel, Uptime}};
+\node[box, below of=eval]   (metrics) {Operational Metrics\\{\scriptsize EENS, Diesel, Stockouts}};
 
 \draw[->] (data)    -- (split);
 \draw[->] (split)   -- (env);
@@ -247,9 +247,10 @@ model preserves a Markovian state with only the two pending-order scalars
 (flag and quantity), avoiding a countdown vector. Four scenarios are used
 in the evaluation campaign: Normal ($p=1/24$, mean 24\,h), Delayed
 ($p=1/48$, mean 48\,h), Monsoon ($p=1/72$, mean 72\,h), and Extreme
-($p=1/336$, mean 336\,h). All policies are trained under the Normal
-scenario only; Delayed, Monsoon, and Extreme are evaluation-only
-out-of-distribution stress tests.
+($p=1/336$, mean 336\,h). The learned policies in the primary
+comparison---RLInv, TrackB, A5, A6, and A7---were trained under Normal
+logistics. All nine policies were then evaluated under Normal, Delayed,
+Monsoon, and Extreme conditions.
 Each scenario represents a distinct operating regime rather than an
 arbitrary parameter value (Table~\ref{tab:scenario_meaning}).
 
@@ -299,10 +300,13 @@ their bounds) provides a numerical backstop and contributes a small
 penalty term to the reward (Section~\ref{sec:reward_design}). No adaptive
 Lagrangian update was implemented. No hard violations were observed for
 the masked policies (verified in Chapter~\ref{chap:results}); the
-ablation results there show that masking mainly prevents severe
-dispatch-policy degradation under stressed logistics when replenishment
-is externally managed, rather than acting primarily to eliminate
-constraint violations.
+ablation results there are consistent with an architecture-dependent
+benefit from masking under stressed logistics when replenishment is
+externally managed, rather than masking acting primarily to eliminate
+constraint violations. The A6--TrackB comparison also differs in
+observation design (Section~\ref{sec:comparison_policies}), so this gap should not
+be attributed to masking alone; the cleaner masking comparison is
+RLInv vs.\ A7, which found no significant mean-EENS effect.
 
 \subsection{Agent architecture and training}
 
@@ -377,7 +381,7 @@ Table~\ref{tab:hyperparams} lists all training hyperparameters.
 \midrule
 Algorithm              & MaskablePPO (\texttt{sb3-contrib}) & Hard feasibility masking \\
 Policy network         & Flat MLP [256,\,256], ReLU         & CPU-feasible capacity \\
-Total timesteps        & 400{,}000 per seed                 & $\approx$\,2\,h on a 6--8 core CPU workstation \\
+Total timesteps        & 400{,}000 per seed                 & Fixed training budget used consistently across all runs \\
 Learning rate          & $3\times10^{-4}$ (linear decay)    & PPO standard \\
 Clip ratio $\epsilon$  & 0.2                                & PPO standard \\
 Entropy coefficient    & 0.01                               & Encourage exploration \\
@@ -443,7 +447,7 @@ reliability failure, not merely a cost), and should be penalised more
 severely rather than merely proportionally.
 \item \textbf{$\beta = 0.4$} (grid-cost weight) reflects that grid
 electricity is cheaper than diesel per unit energy in typical Indian
-tariff structures, but is not free; a intermediate weight between zero
+tariff structures, but is not free; an intermediate weight between zero
 and $\alpha$ avoids the policy treating grid draw as costless.
 \item \textbf{$\mu = 20$} (physical-violation penalty) is deliberately
 small: it is a numerical backstop for the rare event that hard masking
@@ -549,21 +553,23 @@ variables, keeping the MILP computationally small. MPC's battery--DG
 co-optimisation within the MILP is a mild optimistic bias relative to
 RLInv's greedy priority-rule battery dispatch, since the solver can plan
 battery and generator jointly where the simulator's own dispatch cannot;
-this is a documented, deliberate advantage given to the baseline. Because
-the 24-hour horizon cannot see a delivery whose expected arrival lies
-beyond it, MPC's expected-delivery estimate is undefined under the
-Extreme scenario (mean lead time 336\,h, far beyond the horizon) --- the
-central structural limitation this comparison is designed to expose. A
+this is a documented, deliberate advantage given to the baseline. Under
+Extreme logistics, the expected delivery time lies far beyond the
+24-hour planning horizon (mean lead time 336\,h), limiting MPC's ability
+to account for replenishment within its current optimisation window ---
+the central structural limitation this comparison is designed to expose. A
 third variant using a learned 24-hour forecasting module in place of the
 persistence forecast was also implemented and evaluated during
 development; it is not part of the primary comparison, as it did not
 alter the qualitative conclusions drawn from the persistence-forecast
 MPC baseline.
 
-\textbf{Oracle-MPC} is identical to MPC except that its forecast is the
-\emph{actual} realised future load and solar trace (perfect information)
-rather than a persistence estimate, and its planning horizon extends to
-the full 360-step evaluation episode rather than 24 hours. It is not a
+\textbf{Oracle-MPC} uses the realised future load, solar-generation and
+grid-availability traces over the remaining evaluation horizon (perfect
+information) rather than a persistence estimate, and its planning
+horizon extends to the full 360-step evaluation episode rather than 24
+hours. Diesel ordering remains governed by the same $(s,S)$ rule, and
+delivery timing remains stochastic. It is not a
 deployable policy; it exists to answer a specific diagnostic question: if
 the gap between RLInv and TrackB/MPC were explained purely by better
 forecasting or better dispatch optimisation, RLInv should not be able to
@@ -590,8 +596,10 @@ contribution of the masking safety mechanism.
 flag, pending quantity, elapsed time since ordering ($\tau_t$), and the
 remaining delivery-time channel ($R_t$); the remaining six dimensions
 (SoC, PV, load, grid, and the two cyclic hour-of-day features) are
-unchanged. This isolates the contribution of explicit inventory and
-ordering-history awareness in the state.
+unchanged. This tests the combined contribution of inventory,
+pending-delivery, and ordering-history information; because five
+channels are removed together, their individual effects are not
+isolated.
 
 \textbf{A6} provides a cleaner ordering ablation while acknowledging
 that the dispatch policy is re-learned under a reduced action space,
