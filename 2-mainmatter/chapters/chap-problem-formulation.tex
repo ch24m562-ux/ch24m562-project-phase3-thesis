@@ -471,10 +471,10 @@ detailed in Chapter~\ref{chap:methodology}.
 Training episodes run for 720 steps (30 days), ensuring that the policy
 observes multiple fuel-delivery cycles and representative solar variability
 patterns. Evaluation episodes use the held-out 15-day test split of the
-ITU/Zindi dataset, providing an independent assessment of generalisation.
+ITU/Zindi dataset to assess policy performance on unseen operating conditions.
 
 % ---------------------------------------------------------------
-\section{Unified versus Hierarchical Decomposition}
+\section{Unified versus Decomposed Architecture}
 \label{sec:unified_vs_hier}
 % ---------------------------------------------------------------
 
@@ -499,20 +499,20 @@ The comparison between unified and hierarchical architectures allows the
 following hypotheses to be tested.
 
 \textbf{H1 (Coupling hypothesis).} Joint optimisation of diesel ordering and
-energy dispatch by a single agent provides measurable reliability or cost
-benefits relative to hierarchical decomposition. A reduction of at least 10\%
-in Expected Energy Not Served (EENS) is considered the threshold for
-operational significance.
+energy dispatch by a single agent provides measurable reliability or
+operational cost benefits relative to decomposed control, in which
+replenishment and dispatch decisions are managed separately.
+
 
 \textbf{H2 (Action masking hypothesis).} Incorporating feasibility-aware
-action masking during training improves learning stability and reduces
-the likelihood of infeasible exploratory actions relative to vanilla
-policy-gradient training without masking.
+action masking improves reliability under stressed logistics when diesel
+replenishment is externally managed, while providing little measurable
+benefit when replenishment is learned jointly.
 
 \textbf{H3 (Inventory-state hypothesis).} Including explicit diesel inventory
 state in the observation improves ordering decisions, relative to an ablated
-agent in which the inventory-related state variables $\Inv_t$ and $\Pipe_t$
-are removed from the observation vector.
+agent in which the inventory- and delivery-related observation channels are
+removed from the observation vector.
 
 These hypotheses are stated here, at the level of the problem formulation,
 because they directly shape the choice of state space, action space, and
