@@ -5,7 +5,7 @@
 \texorpdfstring{\MakeUppercase{Keywords}}{Keywords} &
 telecom tower sites; hybrid energy systems; solar PV; battery storage;
 diesel logistics; reinforcement learning; constrained Markov decision process;
-inventory management; action masking; expected energy not served;
+inventory management; action masking; Expected Energy Not Served (EENS);
 model predictive control
 \end{tabular}
 \par
@@ -13,8 +13,8 @@ model predictive control
 
 Reliable and low-carbon energy management for hybrid telecom tower sites
 remains a critical challenge in regions with weak or intermittent electricity
-supply. Conventional rule-based controllers and offline optimisation tools
-such as HOMER Pro rely on fixed thresholds and deterministic assumptions,
+supply. Conventional rule-based controllers and offline optimisation
+approaches rely on fixed thresholds and deterministic assumptions,
 making them unable to adapt to stochastic solar generation, grid outages, and
 fuel logistics uncertainty.
 
@@ -22,7 +22,7 @@ This thesis studies the operational control of hybrid
 solar--battery--diesel telecom tower systems under uncertainty in renewable
 generation, grid availability, and diesel delivery. The problem is formulated
 as a Constrained Markov Decision Process (CMDP) that explicitly models
-battery state-of-charge limits and diesel inventory dynamics, including diesel replenishment ordering and stochastic delivery lead times.
+battery operating constraints and diesel inventory dynamics, including diesel replenishment ordering and stochastic delivery lead times.
 
 A data-grounded simulation environment is developed using the ITU~2024
 Smart Energy Scheduling dataset, comprising operational traces from ten
@@ -37,9 +37,10 @@ learning, and optimisation-based, including a receding-horizon Model Predictive
 Control (MPC) baseline and a perfect-information Oracle-MPC reference ---
 across ten sites, ten independent training seeds, and four delivery-logistics
 scenarios of increasing severity, using paired seed-level statistical
-comparisons throughout. Across the four representative logistics scenarios,
-RLInv achieves the lowest mean Expected Energy Not Served (EENS) in three
-scenarios and remains statistically competitive in the fourth, and this
+comparisons throughout. The evaluation shows that, across the four
+representative logistics scenarios, RLInv achieves the lowest mean Expected
+Energy Not Served (EENS) in three scenarios and remains statistically
+competitive in the fourth, and this
 advantage is not attributable to superior dispatch or
 forecasting alone: the gap to Oracle-MPC, which assumes perfect
 future information, does not shrink under increasing logistics
@@ -58,10 +59,10 @@ unconditional: reinforcement learning is not shown to be universally
 superior to classical optimisation, but joint optimisation of
 replenishment and dispatch is shown to provide measurable value
 specifically under uncertainty that classical rule-based coordination
-cannot easily represent. This conditional finding, together with a
-systematically verified evaluation framework spanning primary comparison,
-mechanism ablations, and multiple robustness checks, is offered as a more
-useful basis for deployment decisions than an unconditional claim of RL
-superiority would have been.
+cannot easily represent. These findings, supported by a systematically
+verified evaluation framework comprising primary comparisons, mechanism
+ablations, and robustness studies, provide a stronger basis for
+deployment decisions than an unconditional claim of reinforcement
+learning superiority.
 
 \end{doublespacing}
