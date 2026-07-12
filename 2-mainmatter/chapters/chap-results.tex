@@ -35,10 +35,12 @@ dispatch policy, and is included to isolate a distinct question from
 the other three: whether reinforcement learning \emph{alone}, applied
 only to dispatch, is sufficient, or whether the reliability gains
 reported below require learning ordering and dispatch \emph{jointly}.
-An oracle variant of MPC, given perfect foresight of load and solar
-generation, is included as an optimistic reference representing the
+An oracle variant of MPC, given perfect foresight of load, solar
+generation, and grid availability, is included as an optimistic reference representing the
 best achievable dispatch performance within the decomposition
-framework under perfect future information; it is not intended as a
+framework under perfect future information (diesel delivery timing remains
+stochastic and governed by the same classical ordering rule as the
+other MPC variants); it is not intended as a
 deployable policy and is not counted among the competing baselines.
 
 \begin{table}[htb]

@@ -63,7 +63,7 @@ Table~\ref{tab:impl_sequence}.}
 2 & Simulator       & \texttt{TelecomEnv} passing unit tests on all transitions \\
 3 & Baselines       & B0, B1 rule-based policies producing first cost numbers \\
 4 & RL agent        & RLInv training on a single site, converging \\
-5 & TrackB          & Hierarchical $(s,S)$ + PPO dispatch training \\
+5 & TrackB          & Decomposed $(s,S)$ + PPO dispatch training \\
 6 & Ablations       & A5, A6, A7 variants trained and evaluated \\
 7 & Optimisation baselines & MPC and Oracle-MPC MILP dispatch (HiGHS solver) \\
 8 & Full evaluation & 44{,}000-rollout campaign complete (36{,}000 core $+$
@@ -136,12 +136,8 @@ Approx.\ wall-clock time & $\approx$\,2\,h & Per run, 4-core CPU \\
 
 \subsection{Convergence check}
 
-Training was extended to 560{,}000 steps on three representative sites
-(1, 5, and 7) using seed 42 to confirm the 400{,}000-step checkpoint had
-converged. Sites 1 and 7 showed no change in evaluation reward beyond
-400{,}000 steps. Site 5 exhibited high reward variance across
-independent runs regardless of step count, consistent with its
-classification as a grid-constrained site (Chapter~\ref{chap:datasets-setup}).
+A convergence check on three representative sites (1, 5, and 7) found no
+consistent benefit from extending training beyond 400{,}000 steps.
 The 400{,}000-step checkpoint was retained for all sites and seeds on
 this basis.
 
