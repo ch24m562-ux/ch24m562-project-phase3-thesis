@@ -1,13 +1,3 @@
-% filename: chap-literature-v2.tex
-% Changes from v1 (Phase-I):
-%   - Opening thesis-positioning sentence: softened "jointly optimizes" and "controller"
-%   - Battery ageing section closing sentence: removed multi-agent + battery ageing combination claim
-%   - Gap table: This thesis row corrected — multi-agent ×, battery degradation partial
-%   - Core Novelty bullets: rewritten to match actual Phase-II implementation
-%   - Chapter 2 conclusion: softened "first comprehensive CMDP"
-%   - Literature body (paper summaries, microgrid gap, HOMER, PMU): UNCHANGED
-% ============================================================
-
 \chapter{Literature Review}
 \label{chap:literature}
 
@@ -34,8 +24,6 @@ at telecom towers as a finite, replenishable inventory with stochastic delivery
 delays, holding/shortage costs, and telecom-specific QoS-linked outage penalties.}
 \end{quote}
 
-% ── REVISED: softened from "jointly optimizes energy dispatch and diesel
-%    replenishment decisions" and from "controller" to "framework" ──────────
 This thesis addresses this gap through an \textbf{inventory-inspired reinforcement
 learning framework} for hybrid telecom-tower energy management, in which diesel
 is modelled explicitly as a finite replenishable resource alongside battery and
@@ -346,9 +334,6 @@ safe-RL formulations with Lagrangian safety critics for constrained
 operation in power--communication systems \citep{yan_2025_safe_marl_bs},
 and advanced forecasting and transfer-learning methods for telecom
 energy management \citep{ma_pan_2025_telecom_ies,cho_2025_solar_smallcell_ddqn}.
-% ── REVISED: removed the over-claim that "none integrates battery ageing,
-%    hard safety, stochastic renewables, AND diesel inventory in a single RL
-%    framework" plus "multi-agent" — replaced with a narrower, accurate gap ──
 However, none of these works combines explicit diesel-inventory dynamics,
 logistics uncertainty, and telecom-specific operational constraints within
 a single RL formulation tailored to rural hybrid PV--battery--diesel
@@ -359,11 +344,6 @@ literature.
 
 \section{Identified Research Gap}
 
-% ── REVISED gap table: This thesis row corrected.
-%    Multi-agent: × (single-agent PPO, not MARL)
-%    Battery degradation: partial (cost term in reward, not explicit
-%      cycle/calendar ageing model)
-% ─────────────────────────────────────────────────────────────────────────────
 \begin{table}[htbp]
 \centering
 \small
@@ -401,10 +381,6 @@ Rep.\ fuel\,/\,energy-inventory logistics works (2019--2025)
 }
 \end{table}
 
-% ── REVISED Core Novelty: rewritten to match actual Phase-II implementation.
-%    Removed: "first deep RL formulation", "multi-agent", strong battery-ageing claim.
-%    Replaced with: accurate inventory-aware framing, "one of the first", safer verbs.
-% ─────────────────────────────────────────────────────────────────────────────
 \textbf{Core Novelty of This Thesis:}
 This thesis proposes, to the best of the author's knowledge, one of the
 first reinforcement-learning formulations for hybrid telecom-tower control
@@ -448,8 +424,6 @@ The literature firmly establishes deep RL as a state-of-the-art tool for
 complex energy systems, while diesel fuel---the reliability backbone of
 rural telecom towers---remains largely absent as an explicit inventory
 process in existing formulations.
-% ── REVISED: removed "first comprehensive CMDP and methodological framework"
-%    and "battery ageing" from the claim; replaced with narrower, accurate framing ──
 By bringing together inventory theory, constrained RL concepts, and long-horizon
 hybrid-energy control, this thesis develops a telecom-specific CMDP
 framework for explicitly inventory-aware diesel-energy management.  To
