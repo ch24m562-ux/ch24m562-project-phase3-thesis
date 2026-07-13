@@ -112,7 +112,7 @@ ahead to plan for delivery delays that can extend far beyond the
 \textbf{Improving dispatch alone --- whether through reinforcement
 learning or through optimisation --- does not eliminate the degradation
 caused by externally managed replenishment.} RLInv achieves the best
-overall performance in the evaluated grid; the following ablations
+overall performance in the evaluated grid (Figure~\ref{fig:eens_comparison}); the following ablations
 examine how much of that result can be attributed to joint replenishment
 learning and the other design choices. This motivates the mechanistic analysis in
 Section~\ref{sec:mechanism}, where the three pre-specified ablation
@@ -200,7 +200,7 @@ understated significance for this design).
 external calibrated $(s,S)$ policy and re-trains dispatch using a
 reduced two-action space (\texttt{Discrete(2)}, generator on/off only)
 while retaining the full 11-dimensional observation, in contrast to
-RLInv's six-action joint space (\texttt{Discrete(6)}). It therefore
+RLInv's six-action joint space (\texttt{Discrete(6)}) (Figure~\ref{fig:ablation_h1}). It therefore
 provides a cleaner replenishment comparison than TrackB, but does not
 hold the dispatch architecture fully constant --- it does not isolate
 ``ordering'' as a standalone mechanism, since A6
@@ -261,7 +261,7 @@ masking alone. There is no meaningful difference
 under Normal or Delayed logistics (identical or not significant), but a
 very large, highly significant effect under Monsoon ($d_z=-10.2$,
 $p<0.0001$) and Extreme ($d_z=-4.6$, $p<0.0001$), both favouring the
-masked (A6) variant. Separately, RLInv vs.\ A7 (vanilla PPO, no
+masked (A6) variant (Figure~\ref{fig:ablation_h2}). Separately, RLInv vs.\ A7 (vanilla PPO, no
 masking, otherwise identical to RLInv, so ordering is already jointly
 learned in both, and both share the same 11-dimensional observation)
 shows no significant difference in any scenario
@@ -307,7 +307,7 @@ RLInv achieves numerically lower mean EENS than A5 in every
 scenario, but the paired differences are small and do not reach
 statistical significance under the final evaluation protocol
 ($|d_z|$ ranging 0.24--0.69; closest to significance under Extreme,
-$p=0.058$, still not significant at $\alpha=0.05$).
+$p=0.058$, still not significant at $\alpha=0.05$) (Figure~\ref{fig:ablation_h3}).
 
 \textbf{Interpretation.} Inventory observability produced consistently
 lower mean EENS, but the differences remained small and were not
@@ -382,7 +382,7 @@ The four scenarios used throughout this chapter (Normal, Delayed,
 Monsoon, Extreme) are discrete operating points; this subsection
 instead asks how performance evolves across a wider sequence of mean
 delivery lead-time settings, increasing from 0h to 336h, aggregated over all 10
-sites and evaluation seeds.
+sites and evaluation seeds (Figure~\ref{fig:lead_sensitivity}).
 
 \begin{figure}[htb]
 \centering
@@ -415,7 +415,7 @@ violation penalty. Extreme-scenario EENS varied by only 3.32\,kWh
 (167.74--171.06\,kWh) across the entire sweep, and Monsoon-scenario
 EENS varied by 2.90\,kWh across the sweep. Separately, training
 with $\gamma \in \{0.95, 0.99, 0.995\}$ produced results within
-2.4\,kWh of one another on every scenario.
+2.4\,kWh of one another on every scenario (Figure~\ref{fig:reward_sensitivity}).
 
 \begin{figure}[htb]
 \centering
@@ -437,7 +437,7 @@ performance is not highly sensitive to these choices.
 RLInv's advantage over B1 was evaluated across five tank capacities
 (24\,h, 48\,h, 72\,h baseline, 144\,h, and 336\,h of buffer) on the
 selected three-site sensitivity subset under delayed logistics
-(Table~\ref{tab:tank_sensitivity}).
+(Table~\ref{tab:tank_sensitivity}, Figure~\ref{fig:tank_sensitivity}).
 
 \begin{table}[htb]
 \centering
@@ -480,7 +480,7 @@ geometric distribution. To test sensitivity to this modelling choice,
 additional evaluation runs were conducted under three alternative
 delivery-time distributions with matched scenario means: lognormal
 ($\sigma=0.5$), lognormal ($\sigma=0.8$, heavier tail), and Weibull
-($k=2$).
+($k=2$) (Figure~\ref{fig:distributional_robustness}).
 
 \begin{figure}[htb]
 \centering
@@ -578,7 +578,7 @@ has genuine opportunity to use the signal.
 \textbf{Results.} Unless otherwise stated, results in this subsection
 are aggregated over 3 sites $\times$ 3 training seeds $\times$ 4
 scenarios $\times$ 10 evaluation episodes per variant (720 episodes
-total). Table~\ref{tab:rlinv_da_results} reports EENS across
+total). Table~\ref{tab:rlinv_da_results} and Figure~\ref{fig:rlinv_da} report EENS across
 all four scenarios for both variants. Confidence intervals overlap in every scenario, and no
 consistent direction of improvement emerges: across the full grid of
 36 site--seed--scenario comparisons, RLInv-DA achieved lower EENS in 5
@@ -625,7 +625,7 @@ Behavioural analysis across 72 matched representative trace episodes
 one representative episode per site--seed--scenario combination rather
 than an average over the full 10-episode evaluation grid used for the
 performance results above)
-(Table~\ref{tab:rlinv_da_behaviour}) shows that the EWMA-aware policy
+(Table~\ref{tab:rlinv_da_behaviour}, Figure~\ref{fig:rlinv_da_behaviour}) shows that the EWMA-aware policy
 is behaviourally active rather than ignoring the additional
 observation, but its effect is scenario-dependent and not uniformly
 protective. Under monsoon conditions, RLInv-DA orders later and at
