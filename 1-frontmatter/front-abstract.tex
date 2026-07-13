@@ -34,9 +34,11 @@ against eight comparator policies spanning rule-based,
 reinforcement learning, and optimisation-based approaches, including a
 receding-horizon Model Predictive Control (MPC) baseline and an
 optimistic perfect-information Oracle-MPC reference. The evaluation
-covers ten sites, ten independent training seeds, and four
-delivery-logistics scenarios of increasing severity, with paired
-seed-level statistical comparisons performed throughout.
+covers ten sites and four
+delivery-logistics scenarios of increasing severity, with the learned
+policies trained across ten independent seeds and paired
+training-seed statistical comparisons for the primary policy and
+ablation analyses.
 
 Across the four logistics scenarios, RLInv achieves the lowest mean
 Expected Energy Not Served (EENS) under Normal and Extreme logistics,
@@ -49,13 +51,15 @@ but narrows again under Extreme logistics, where physical fuel
 availability increasingly constrains all policies.
 
 Isolating the contribution of jointly learned replenishment through a
-controlled ablation shows that its benefit is scenario-dependent rather
+cleaner practical replenishment comparison shows that its benefit is
+scenario-dependent rather
 than universal. It is statistically significant under Normal and Extreme
 logistics stress but is not distinguishable from a classical ordering
 rule under Delayed or moderate (Monsoon)
-logistics stress. Action masking is shown to improve dispatch-policy robustness under
-logistics conditions that are harsher than the training distribution,
-rather than acting as the primary safety mechanism during deployment.
+logistics stress. The cleaner masking ablation finds no statistically
+distinguishable mean-EENS effect when replenishment is learned jointly,
+while a larger architecture-dependent gap appears under stressed
+logistics in the decomposed-control comparison.
 
 Together, these findings indicate that jointly learning diesel
 replenishment and energy dispatch enables reinforcement learning to
