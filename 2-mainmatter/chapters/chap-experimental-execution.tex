@@ -6,9 +6,11 @@ Chapter~\ref{chap:methodology} defined the experimental design: the
 simulator architecture, policy set, and evaluation protocol. This
 chapter records how that design was executed: the implementation
 sequence, the training workload actually run, how the ablation set
-evolved during development, and the statistical framework applied to
-the results in Chapter~\ref{chap:results}.
-
+evolved during development, and the statistical framework used for the
+confirmatory evaluation. The exploratory experiments described here
+informed the final experimental design but are not included in the
+confirmatory hypothesis-testing results reported in
+Chapter~\ref{chap:results}.
 % ============================================================
 \section{Implementation Sequence}
 \label{sec:impl_overview}
@@ -165,7 +167,7 @@ executed set.}
 \midrule
 A1 (Full SC-PPO)  & RLInv   & Renamed to reflect actual implementation
                                (MaskablePPO flat MLP, not modular SC-PPO) \\
-A8 (Hierarchical) & TrackB  & Renamed; calibrated $(s,S)$ + PPO dispatch \\
+A8 (originally labelled ``Hierarchical'') & TrackB  & Renamed; calibrated $(s,S)$ + PPO dispatch \\
 A5, A7            & A5, A7  & Retained unchanged in design; evaluation
                                scope expanded from an earlier 2-site
                                targeted rerun to the full 10-site grid
@@ -279,6 +281,10 @@ mean as the unit would be incorrect, since the 10 episodes within a seed
 share the same trained weights and are not independent observations of
 a random policy; the seed-level mean correctly treats each independently
 trained policy instance as one observation.
+
+Treating training seeds rather than evaluation episodes as the
+statistical unit avoids pseudo-replication arising from repeated
+rollouts of the same trained policy.
 
 Hypothesis comparisons (H1, H2, H3, Chapter~\ref{chap:results}) are
 assessed with a paired $t$-test on within-seed differences, since every

@@ -232,14 +232,17 @@ more confounded comparator than A6 since both ordering and dispatch
 architecture differ). This gap is large and consistent
 (Table~\ref{tab:primary_comparison}: e.g.\ 11.29 vs.\ 174.50\,kWh
 monsoon, 53.85 vs.\ 152.13\,kWh extreme), but because TrackB confounds
-two design differences at once, it is used below to isolate
-\emph{masking} rather than as primary evidence for joint replenishment.
+two design differences at once, it is used below to examine
+masking-related architectural differences, with the observation-space
+confound stated explicitly, rather than as primary evidence for joint
+replenishment.
 
 \begin{figure}[htb]
 \centering
 \includegraphics[width=0.98\textwidth]{fig_ablation_h1_v3.png}
-\caption{Joint replenishment and dispatch learning: RLInv vs.\ A6 (primary
-comparison, dispatch architecture held constant) and vs.\ TrackB
+\caption{Joint replenishment and dispatch learning: RLInv vs.\ A6 (cleaner
+practical replenishment comparison; dispatch is re-trained under a
+reduced action space) and vs.\ TrackB
 (shown for context; confounds ordering and dispatch architecture). Paired
 $t$-test significance shown where applicable: * $p<0.05$, ***
 $p<0.001$, ns = not significant. Error bars: 95\% CI, $n=10$ seeds.}
@@ -416,8 +419,9 @@ with $\gamma \in \{0.95, 0.99, 0.995\}$ produced results within
 \begin{figure}[htb]
 \centering
 \includegraphics[width=\textwidth]{fig_reward_sensitivity.png}
-\caption{Robustness of the reward-weight sweep (a) and discount-factor
-sweep (b) to the primary comparison, evaluated on the selected
+\caption{Sensitivity of RLInv's performance to reward weights (a) and
+discount factor
+(b), evaluated on the selected
 three-site sensitivity
 subset under the monsoon and extreme scenarios, 3 seeds $\times$ 400k training
 steps.}
