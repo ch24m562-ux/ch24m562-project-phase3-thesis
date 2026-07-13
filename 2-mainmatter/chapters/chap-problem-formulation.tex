@@ -179,9 +179,8 @@ Although diesel inventory decisions operate on multi-day timescales, they
 directly constrain hourly dispatch feasibility. During grid outages or
 low-solar periods, the generator can only operate if sufficient fuel remains
 on site. A controller that optimises hourly energy dispatch without accounting
-for inventory state may therefore select locally optimal actions that lead to
-infeasible states in subsequent hours. Jointly modelling inventory and dispatch
-decisions allows the agent to anticipate future fuel constraints and maintain
+for inventory state may select myopic dispatch decisions that later lead to infeasible inventory states. Jointly modelling inventory and dispatch
+decisions creates the opportunity for the agent to anticipate future fuel constraints and maintain
 service reliability under uncertain delivery schedules.
 
 The formulation therefore differs from conventional telecom energy-management
@@ -204,8 +203,7 @@ generation, load, grid outages, and delivery delay that are difficult
 to specify in closed form and vary across sites and seasons.
 Reinforcement learning avoids solving this optimisation problem from
 scratch at every step by learning a policy directly from interaction,
-and the trained policy generalises across sites and scenarios without
-re-solving. The algorithmic choices this motivates (PPO, action
+and the trained policy can then be evaluated consistently across multiple sites and logistics scenarios without solving the optimisation problem online at every decision step. The algorithmic choices this motivates (PPO, action
 masking, and the unified-vs-decomposed architecture question) are
 developed in Chapter~\ref{chap:methodology}.
 
@@ -346,25 +344,36 @@ that point $\Pipe_t = Q_{t-L_t}$ and no further orders may be placed. In
 the absence of a pending order, $\Pipe_t = 0$.
 
 \paragraph{Stochastic lead time.}
-Lead time in days is drawn from a log-normal distribution at the moment
-an order is placed:
+In the primary experimental campaign (Chapter~\ref{chap:results}), delivery
+is modelled as a memoryless geometric process: once an order is placed,
+in each subsequent hour that it has not yet arrived, delivery occurs
+independently with probability $p$, so that
 \begin{equation}
-L_t^{\text{days}} \;\sim\; \LogNormal(\mu,\,\sigma=0.6),
+L_t \;\sim\; \Geometric(p), \qquad \mathbb{E}[L_t] = 1/p \text{ hours},
 \label{eq:leadtime}
 \end{equation}
-with $\mu = 2.5$\,days under the \emph{normal logistics} scenario and
-$\mu = 5.0$\,days under the \emph{delayed logistics} scenario. Both
-scenarios are evaluated in Chapter~\ref{chap:results} to test robustness
-under supply-chain disruption. The lead time in hourly timesteps is
-\begin{equation}
-L_t = \lceil 24\,L_t^{\text{days}} \rceil,
-\label{eq:leadtime_steps}
-\end{equation}
-consistent with $\Delta t = 1$\,h.
+consistent with $\Delta t = 1$\,h. The four evaluated logistics scenarios
+correspond to different mean lead times, calibrated through $p$: \emph{Normal}
+($p=0.04167$, mean 24\,h), \emph{Delayed} ($p=0.02083$, mean 48\,h),
+\emph{Monsoon} ($p=0.01389$, mean 72\,h), and \emph{Extreme} ($p=0.00298$,
+mean 336\,h, $\approx$14 days). All four scenarios are evaluated in
+Chapter~\ref{chap:results} to test robustness under increasing
+supply-chain disruption.
 
-The log-normal distribution for $L_t^{\text{days}}$ is standard in remote
-diesel logistics modelling \citep{srinivasan2013,shen2011}. Because actual
-delivery records are unavailable in the ITU/Zindi dataset, $\Pipe_t$ is the
+As a separate robustness check reported alongside the primary results
+(Chapter~\ref{chap:results}), rather than as part of the primary
+comparison, delivery lead time is also modelled using log-normal and
+Weibull distributions with the same mean lead time as the corresponding
+geometric setting, using shape parameters $\sigma=0.5$ (moderate
+variability) and $\sigma=0.8$ (heavy-tailed) for the log-normal case, and
+$k=2$ for the Weibull case. This tests whether the qualitative policy
+ranking is sensitive to the specific parametric form assumed for delivery
+uncertainty, independent of the primary geometric model used elsewhere in
+this thesis. The log-normal distribution is standard in remote diesel
+logistics modelling \citep{srinivasan2013,shen2011}.
+
+Because actual delivery records are unavailable in the ITU/Zindi dataset,
+$\Pipe_t$ is the
 only state component generated synthetically; all other dynamics are driven
 directly by real sensor measurements.
 
@@ -505,7 +514,7 @@ replenishment and dispatch decisions are managed separately.
 
 
 \textbf{H2 (Action masking hypothesis).} Incorporating feasibility-aware
-action masking improves reliability under stressed logistics when diesel
+action masking improves dispatch-policy robustness under stressed logistics when diesel
 replenishment is externally managed, while providing little measurable
 benefit when replenishment is learned jointly.
 
@@ -532,7 +541,7 @@ The formulation presented in this chapter serves three related objectives:
 it enables joint dispatch and diesel-ordering control within a single
 sequential decision framework; it incorporates stochastic delivery-pipeline
 dynamics into the state representation, capturing replenishment uncertainty
-that existing energy-management formulations do not model; and it encodes
+that the energy-management formulations reviewed in Chapter 2 do not explicitly model; and it encodes
 hard operational feasibility requirements directly in the decision problem,
 rather than relying on penalty terms alone.
 

@@ -7,10 +7,12 @@
 \label{sec:results_overview}
 % ============================================================
 
-This chapter answers three questions: does RLInv improve reliability
-over existing rule-based and optimisation-based approaches; which
-design choices are responsible; and how far do these conclusions hold
-under different reward, sizing, and delivery-time assumptions. Evidence
+This chapter answers three questions: does RLInv provide measurable
+operational advantages over existing rule-based and optimisation-based
+approaches, under which delivery-logistics conditions do those
+advantages emerge, and which design choices are responsible? It also
+examines how far these conclusions hold under different reward, sizing,
+and delivery-time assumptions. Evidence
 is drawn from the full Phase 3 evaluation grid (10 sites, 10 seeds,
 four delivery-logistics scenarios), reported primarily as Expected
 Energy Not Served (EENS), with the site, scenario, and metric
@@ -112,8 +114,10 @@ learning or through optimisation --- does not eliminate the degradation
 caused by externally managed replenishment.} RLInv achieves the best
 overall performance in the evaluated grid; the following ablations
 examine how much of that result can be attributed to joint replenishment
-learning and the other design choices. This
-motivates the mechanistic analysis in Section~\ref{sec:mechanism}.
+learning and the other design choices. This motivates the mechanistic analysis in
+Section~\ref{sec:mechanism}, where the three pre-specified ablation
+studies isolate the individual contributions of coupled replenishment
+learning, action masking, and inventory-aware state representation.
 
 \begin{figure}[htb]
 \centering
@@ -344,6 +348,11 @@ curtailed selectively
 rather than run to exhaustion, and stockout events remain at zero even
 under extreme stress despite non-zero EENS --- non-zero EENS occurs
 without recorded diesel stockout or hard constraint violation.
+
+These behavioural observations provide an explanatory interpretation of
+the quantitative differences identified in the preceding hypothesis
+analyses rather than constituting additional independent statistical
+evidence.
 
 \begin{figure}[htb]
 \centering

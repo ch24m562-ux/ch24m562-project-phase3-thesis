@@ -27,43 +27,40 @@ battery operating constraints and diesel inventory dynamics, including diesel re
 A data-grounded simulation environment is developed using the ITU~2024
 Smart Energy Scheduling dataset, comprising operational traces from ten
 telecom base station sites at hourly resolution. Reinforcement learning
-policies are trained using a Maskable Proximal Policy Optimisation
-(\texttt{MaskablePPO}) agent with hard action masking to enforce operational
-feasibility constraints at every timestep.
+policies are trained with hard action masking that prevents infeasible control actions at each decision step.
 
-The proposed inventory-aware reinforcement learning policy (RLInv) is
-evaluated against eight comparator policies --- rule-based, reinforcement
-learning, and optimisation-based, including a receding-horizon Model Predictive
-Control (MPC) baseline and a perfect-information Oracle-MPC reference ---
-across ten sites, ten independent training seeds, and four delivery-logistics
-scenarios of increasing severity, using paired seed-level statistical
-comparisons throughout. The evaluation shows that, across the four
-logistics scenarios, RLInv achieves the lowest mean Expected
-Energy Not Served (EENS) in three scenarios and remains statistically
-competitive in the fourth. This
-advantage is not attributable to superior dispatch or
-forecasting alone: the gap to Oracle-MPC, which assumes perfect
-future information, is largest under Monsoon but narrows again
-under Extreme, where physical fuel availability increasingly
-constrains all policies. Isolating the contribution of jointly learned replenishment from a
-cleaner ablation shows a benefit that is scenario-dependent rather than
-universal --- significant under normal and severe logistics stress, but not
-distinguishable from a classical ordering rule under moderate (monsoon-scenario)
-stress. Action masking is shown to improve dispatch-policy robustness
-specifically under logistics conditions harsher than the training
-distribution, rather than acting as the primary safety mechanism at
-deployment time.
+The proposed RLInv framework is evaluated
+against eight comparator policies spanning rule-based,
+reinforcement learning, and optimisation-based approaches, including a
+receding-horizon Model Predictive Control (MPC) baseline and an
+optimistic perfect-information Oracle-MPC reference. The evaluation
+covers ten sites, ten independent training seeds, and four
+delivery-logistics scenarios of increasing severity, with paired
+seed-level statistical comparisons performed throughout.
 
-These results indicate that the value of jointly learning replenishment
-and dispatch is conditional on the logistics regime rather than
-unconditional: reinforcement learning is not shown to be universally
-superior to classical optimisation, but joint optimisation of
-replenishment and dispatch is shown to provide measurable value
-specifically under uncertainty that classical rule-based coordination
-cannot easily represent. These findings, supported by a systematically
-verified evaluation framework comprising primary comparisons, mechanism
-ablations, and robustness studies, provide a stronger basis for
-deployment decisions than an unconditional claim of reinforcement
-learning superiority.
+Across the four logistics scenarios, RLInv achieves the lowest mean
+Expected Energy Not Served (EENS) under Normal and Extreme logistics,
+and is not statistically distinguishable from the closest comparator
+under Delayed or Monsoon conditions. Overall,
+these results indicate that RLInv's performance cannot be attributed to
+superior dispatch or forecasting alone. The gap to Oracle-MPC, which
+assumes perfect future information, is largest under Monsoon conditions
+but narrows again under Extreme logistics, where physical fuel
+availability increasingly constrains all policies.
+
+Isolating the contribution of jointly learned replenishment through a
+controlled ablation shows that its benefit is scenario-dependent rather
+than universal. It is statistically significant under Normal and Extreme
+logistics stress but is not distinguishable from a classical ordering
+rule under Delayed or moderate (Monsoon)
+logistics stress. Action masking is shown to improve dispatch-policy robustness under
+logistics conditions that are harsher than the training distribution,
+rather than acting as the primary safety mechanism during deployment.
+
+Together, these findings indicate that jointly learning diesel
+replenishment and energy dispatch enables reinforcement learning to
+exploit sequential inventory--logistics interactions that are difficult
+to capture through fixed rule-based coordination under uncertain fuel
+delivery.
 
 \end{doublespacing}

@@ -8,6 +8,11 @@ source and structure of the ITU/Zindi telecom energy dataset, the
 preprocessing steps used to prepare site-level time series, and the
 cross-site heterogeneity that motivates multi-site evaluation.
 
+The quantities analysed throughout the exploratory data analysis are
+derived from the measured site time-series through the preprocessing
+steps described in this chapter; they are not additional variables
+contained in the original ITU/Zindi dataset.
+
 The exploratory data analysis (EDA) presented in this chapter serves two
 purposes: (i) to characterise the operational variability across telecom
 sites in terms of load demand, solar generation, and grid availability, and
@@ -171,6 +176,11 @@ site10 & 4.08 & 3.27 &  80.1 & 51.7 & 20.5 & 17.6 & Medium \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The Hard, Medium, and Easy labels provide a descriptive summary of the
+observed operating conditions across the ten sites. They are intended to
+facilitate discussion of cross-site behaviour within this dataset and do
+not constitute a formal optimisation or benchmarking taxonomy.
 
 \begin{figure}[htbp]
 \centering
@@ -367,6 +377,10 @@ The scarcity-regime sites --- primarily site~2, site~5, and site~10 under
 adverse logistics conditions --- are structurally where inventory-aware
 control is most likely to reveal a measurable advantage.
 
+The representative subset supports detailed behavioural analysis only;
+all primary policy comparisons and statistical evaluations reported in
+this thesis use the complete ten-site evaluation.
+
 \begin{quote}
 \textbf{Note on site terminology used elsewhere in this thesis.} This
 scarcity-regime grouping (site~2, site~5, site~10) and the Hard/Medium/Easy
@@ -377,13 +391,22 @@ Chapter~\ref{chap:results} for finer-grained sensitivity analyses; that
 subset was chosen to provide diverse operating characteristics (load,
 solar generation and outage behaviour) for the detailed sensitivity
 analyses, rather than to represent the scarcity-based difficulty ranking
-introduced in this chapter. The scarcity-regime classification introduced
-here is therefore used for exploratory data analysis, whereas the
-site~2/site~5/site~7 subset supports the controlled experimental
-comparisons described in Chapters~\ref{chap:methodology}
-and~\ref{chap:results}.
+introduced in this chapter. The scarcity-regime classification introduced here is therefore used for
+exploratory data analysis, whereas the site~2/site~5/site~7 subset is
+used only for the detailed sensitivity analyses described in
+Chapter~\ref{chap:results}.
 \end{quote}
 
+This chapter characterises the dataset, establishes its operational
+properties through exploratory data analysis, and motivates the
+representative site selection used throughout the thesis. The complete experimental protocol and evaluation methodology are
+presented in Chapters~\ref{chap:methodology}
+and~\ref{chap:results}.
+
+These observations motivate the representative site selection adopted in
+this chapter and provide the empirical basis for the experimental
+evaluation protocol introduced in
+Chapter~\ref{chap:methodology}.
 
 % ============================================================
 \section{Representative Site Profile}

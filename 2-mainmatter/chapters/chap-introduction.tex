@@ -6,57 +6,47 @@
 % ============================================================
 
 Information and Communication Technology (ICT) has become a foundational
-pillar of the global digital economy, powering mobile connectivity, cloud
-services, fintech, digital governance, and critical public infrastructure.
-As of 2025, mobile networks serve approximately 5.7 billion unique
-subscribers worldwide, representing over 70\% of the global population
-\citep{gsma2025_mobile_economy}. Mobile data traffic continues to grow at
-double-digit annual rates, driven by video streaming, Internet-of-Things
-(IoT) proliferation, and the ongoing densification of 4G and rollout of 5G
-networks, including in rural and semi-urban regions of emerging markets.
+pillar of the global digital economy, supporting mobile connectivity, cloud
+services, digital governance, and other critical infrastructure. As of 2025,
+mobile networks serve approximately 5.7 billion unique subscribers
+worldwide, representing over 70\% of the global population
+\citep{gsma2025_mobile_economy}. Continued growth in mobile data demand and
+the expansion of 4G and 5G networks are placing increasing pressure on the
+energy consumption of telecom infrastructure.
 
-At the core of this connectivity lies the \textbf{telecom tower site} (or base
-transceiver station, BTS site), which must operate 24\,$\times$\,7 to ensure
-uninterrupted service. A typical multi-technology tower consumes
-2--8\,kW continuously, making the Radio Access Network (RAN)
-responsible for 60--80\% of a mobile operator's total electricity
-demand \citep{americas2023_energy_efficiency}. Globally, mobile networks
-already account for approximately 2--3\% of worldwide electricity
-consumption, a figure projected to rise further as 5G sites increase per-site
-power demand by 2--3$\times$ compared to 4G
-\citep{mckinsey2023_greener_telecom}.
-
-In developing regions like India and Sub-Saharan Africa, telecom towers
-commonly face unreliable grid access and rely heavily on diesel backup
-\citep{gsma2020_tower_esco}. To guarantee high network uptime, operators
-rely on diesel generators (DGs) and battery banks.
-\textbf{Diesel fuel represents 25--30\% of tower OPEX, rising to 70\% at
-remote sites} \citep{datoms2024,gsma2020_tower_esco}.
-In India, 60--70\% of towers rely on diesel due to inconsistent grid supply
-\citep{datoms2024}.
+At the core of this infrastructure lies the \textbf{telecom tower site} (or
+base transceiver station, BTS site), which must operate continuously to
+maintain uninterrupted service. A typical multi-technology tower consumes
+2--8\,kW continuously, making the Radio Access Network (RAN) responsible for
+60--80\% of a mobile operator's total electricity demand
+\citep{americas2023_energy_efficiency}. In developing regions such as India
+and Sub-Saharan Africa, unreliable grid access means that many towers rely
+heavily on diesel generators and battery banks to maintain service continuity
+\citep{gsma2020_tower_esco}. Diesel fuel represents 25--30\% of tower OPEX,
+rising to 70\% at remote sites \citep{datoms2024,gsma2020_tower_esco}.
 
 Fuel logistics failures---through pilferage, stockouts, and delivery
 disruptions---pose significant risks to tower reliability; the 2025 threat
 to 16{,}000 Nigerian sites underscores diesel supply-chain vulnerability
-\citep{datoms2024,alton2025}. The heavy reliance on diesel generators in
-weak-grid regions therefore drives both high operational costs and substantial
-carbon emissions. In the Indian context, a typical macro BTS site that relies
-on a diesel generator for roughly eight hours per day consumes about
-8{,}760\,L of diesel per year, corresponding to approximately
+\citep{datoms2024,alton2025}. In weak-grid regions, the resulting reliance
+on diesel generators drives both high operating costs and substantial carbon
+emissions. In the Indian context, a typical macro BTS site operating a
+diesel generator for approximately eight hours per day consumes about
+8{,}760\,L of diesel annually, corresponding to approximately
 23--24\,t CO\textsubscript{2} per site per year when using a standard
 emission factor of 2.68\,kg\,CO\textsubscript{2} per litre of diesel
 \citep{trai2011_green_telecom,ghgprotocol2017_emission_factors}.
 
-These operational and environmental challenges are intensified by global
-sustainability commitments. The GSMA Climate Action roadmaps and major
-operators target net-zero emissions by 2040--2050, yet diesel-powered sites
-remain one of the largest controllable sources of Scope\,1 emissions
-\citep{gsma2023}. Hybrid renewable systems (solar PV + battery + diesel) have
-demonstrated 20--65\% reductions in diesel consumption and CO\textsubscript{2}
-emissions in field deployments \citep{gsma2020_tower_esco,datoms2024}.
-However, maximising these savings amid stochastic solar irradiance,
-traffic-driven loads, and grid outages requires sophisticated control beyond
-current rule-based systems.
+Global sustainability commitments further increase the need to reduce
+diesel dependence. The GSMA Climate Action roadmaps and major operators
+target net-zero emissions by 2040--2050, while diesel-powered sites remain
+one of the largest controllable sources of Scope\,1 emissions
+\citep{gsma2023}. Hybrid renewable systems (solar PV + battery + diesel)
+have demonstrated 20--65\% reductions in diesel consumption and
+CO\textsubscript{2} emissions in field deployments
+\citep{gsma2020_tower_esco,datoms2024}. However, maximising these savings
+under stochastic solar irradiance, traffic-driven loads, and grid outages
+requires more sophisticated control than current rule-based systems.
 
 In India---the world's second-largest mobile market with over
 1.2 billion subscribers and over
@@ -150,10 +140,10 @@ examined separately:
 \begin{description}
   \item[H1 (Joint ordering).] Does joint learning of dispatch and diesel
   ordering reduce unserved energy relative to a classical $(s,S)$ ordering
-  policy, when dispatch architecture is held constant?
-  \item[H2 (Action masking).] Does hard action masking improve reliability
-  under stressed logistics, and does its effect depend on whether diesel
-  replenishment is externally managed or learned jointly?
+  policy, when dispatch architecture is held approximately comparable?
+\item[H2 (Action masking).] Does hard action masking improve dispatch-policy
+robustness under stressed logistics, and does its effect depend on whether
+diesel replenishment is externally managed or learned jointly?
   \item[H3 (Inventory observation).] Does removing the five inventory- and
   delivery-related observation channels reduce reliability relative to the
   full RLInv observation space?
@@ -179,9 +169,10 @@ The specific objectives of this work are to:
 
   \item Benchmark the learned RL policies against rule-based,
   decomposition-based, and optimisation-based baselines --- including MPC and
-  a perfect-information Oracle-MPC reference --- across ten sites, ten
-  independent training seeds, and four delivery-logistics scenarios of
-  increasing severity. Quantify improvements in unserved energy, diesel
+  a perfect-information Oracle-MPC reference --- across ten sites and four
+  delivery-logistics scenarios of increasing severity, with the learned
+  policies trained across ten independent seeds. Quantify improvements in
+  unserved energy, diesel
   consumption, and operational reliability, with paired seed-level
   statistical analysis for the core policy and ablation comparisons.
 \end{enumerate}
@@ -202,7 +193,7 @@ The main contributions of this thesis are:
   \item The design and empirical evaluation of a constrained reinforcement
   learning framework---\textbf{RLInv}---for hybrid telecom tower energy
   management, including inventory-aware state and action design with hard
-  feasibility enforcement via action masking. RLInv is benchmarked against
+action masking to prevent infeasible control actions. RLInv is benchmarked against
   a dispatch-only RL policy with externally
   managed replenishment (TrackB), optimisation-based dispatch policies
   (MPC and Oracle-MPC), and the controlled A6 ablation. The RLInv--A6
@@ -215,13 +206,14 @@ The main contributions of this thesis are:
   \item A reproducible simulation environment and experimental protocol
   integrating the ITU~2024 Smart Energy Scheduling dataset (ten base station
   sites, 60~days each) with a synthetic lead-time overlay, evaluated across
-  ten independent training seeds and four delivery-logistics scenarios, with
+  four delivery-logistics scenarios with the learned policies trained across
+  ten independent seeds, with
   paired seed-level statistical analysis for the core policy and ablation
   comparisons.
 
   \item A scenario-dependent empirical characterisation of when joint
-  optimisation is beneficial: the H1 comparison favours RLInv under Normal
-  and Extreme logistics, while no statistically distinguishable advantage
+  optimisation is beneficial: the H1 comparison favours RLInv under the Normal
+and Extreme logistics scenarios, while no statistically distinguishable advantage
   is observed under Delayed or Monsoon conditions.
   
    \item A separate ablation shows that masking prevents severe dispatch-policy
@@ -230,9 +222,9 @@ The main contributions of this thesis are:
   already learned jointly.
 
   \item An exploratory extension investigating explicit delivery-delay
-  tracking (RLInv-DA) is also reported, including the finding that explicit
-  delay awareness did not provide a consistent improvement over RLInv, as a
-  genuine finding rather than an omitted one.
+  tracking (RLInv-DA) is also reported: explicit
+  delay awareness did not provide a consistent improvement over RLInv under
+  the tested conditions.
 \end{enumerate}
 
 
@@ -255,8 +247,8 @@ scope choices:
   \item Battery operation is modelled using engineering constraints on
   state of charge and energy balance; detailed electrochemical
   degradation is outside the scope of this work.
-  \item The stochastic diesel-delivery process is the principal synthetic
-  time-varying overlay. Load, PV generation, and grid-availability inputs
+  \item The stochastic diesel-delivery process is the only synthetic stochastic
+process introduced into the principal experiments. Load, PV generation, and grid-availability inputs
   are drawn directly from the ITU site traces, while component parameters
   and operational constraints are specified from the adopted engineering
   assumptions.
@@ -309,7 +301,7 @@ Chapter~3 formulates the problem, Chapter~4 presents the proposed method,
 and Chapter~7 reports the empirical evidence; Chapters~3--7 together form
 the core technical workflow of the thesis.
 
-\begin{figure}[!ht]
+\begin{figure}[H]
 \centering
 \resizebox{0.82\textwidth}{!}{%
 \begin{tikzpicture}[
