@@ -196,10 +196,10 @@ The main contributions of this thesis are:
 action masking to prevent infeasible control actions. RLInv is benchmarked against
   a dispatch-only RL policy with externally
   managed replenishment (TrackB), optimisation-based dispatch policies
-  (MPC and Oracle-MPC), and the controlled A6 ablation. The RLInv--A6
-  comparison isolates the contribution of jointly learned replenishment
-  while holding the dispatch architecture comparable, a controlled
-  comparison not present in
+  (MPC and Oracle-MPC), and the A6 ablation. The RLInv--A6
+  comparison provides a cleaner practical replenishment comparison than
+  TrackB, while the reduced dispatch action space used by A6 remains an
+  acknowledged design difference, not present in
   the RL-based telecom energy management literature reviewed in
   Chapter~\ref{chap:literature}.
 
@@ -216,10 +216,11 @@ action masking to prevent infeasible control actions. RLInv is benchmarked again
 and Extreme logistics scenarios, while no statistically distinguishable advantage
   is observed under Delayed or Monsoon conditions.
   
-   \item A separate ablation shows that masking prevents severe dispatch-policy
-  degradation under stressed logistics when replenishment is externally
-  managed; no measurable mean-EENS benefit is observed when ordering is
-  already learned jointly.
+   \item A larger architecture-dependent gap is observed under stressed
+  logistics in the externally managed replenishment comparison
+  (A6 vs.\ TrackB), while the cleaner RLInv--A7 comparison finds no
+  measurable independent mean-EENS benefit from masking when
+  replenishment is already learned jointly.
 
   \item An exploratory extension investigating explicit delivery-delay
   tracking (RLInv-DA) is also reported: explicit
