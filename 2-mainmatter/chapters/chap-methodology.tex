@@ -344,7 +344,7 @@ the course of training.
 \draw[->] (env)    -- (reward);
 \draw[->] (reward) -- (ppo);
 \draw[->] (ppo)    -- (policy);
-\draw[->] (policy.north) |- ++(0,0.9) -| (order.north);
+\draw[->] (policy.north) -- (order.south);
 \end{tikzpicture}
 \caption{RLInv's per-step decision loop. The mask is applied before
 sampling, so infeasible actions have zero probability rather than being
@@ -359,7 +359,7 @@ Training used four parallel \texttt{SubprocVecEnv} environments for
 to reduce sensitivity to stochastic policy optimisation and to enable
 paired statistical comparisons across identical site--scenario
 combinations: (42, 123, 777, 7, 13, 21, 99, 314, 500, 999). The first
-three (42, 123, 777) were retained from an earlier pilot phase and the
+three (42, 123, 777) were retained from Phase~2 and the
 remaining seven were added to increase statistical power for the
 seed-level paired comparisons reported in Chapter~\ref{chap:results}. A custom evaluation callback synchronised
 \texttt{VecNormalize} statistics between the training and evaluation
@@ -503,7 +503,7 @@ principal control architectures directly.
 \draw[arrow] (agent1) -- (acts1);
 \draw[dashed, gray] (-1.6, -1.05) -- (10.0, -1.05);
 
-\node[label] at (3.4, -1.55) {Decomposed Control (TrackB)};
+\node[label] at (3.4, -1.85) {Decomposed Control (TrackB)};
 \node[box] (state2) at (0, -2.5)
   {System State\\{\scriptsize SoC, Inv, PV, Load, Grid}};
 \node[box] (ss)       at (4.2, -2.0) {$(s,S)$ Inventory Rule};
@@ -709,7 +709,6 @@ paired statistical analysis is applied.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{0.85\textwidth}{!}{%
 \begin{tikzpicture}[
   node distance=1.2cm,
   box/.style={draw, rounded corners, align=center,
@@ -726,8 +725,7 @@ paired statistical analysis is applied.
 \draw[->] (evaluate)   -- (ablations);
 \draw[->] (ablations)  -- (sensitivity);
 \draw[->] (sensitivity)-- (statistics);
-\end{tikzpicture}%
-}
+\end{tikzpicture}
 \caption{Overall evaluation protocol, from training through to the
 paired statistical analysis reported in Chapter~\ref{chap:results}.}
 \label{fig:eval_flow}
@@ -797,6 +795,9 @@ experiments used ten evaluation episodes per training seed.
 \section{Implementation Deviations from the Formal Model}
 \label{sec:impl_deviations}
 % ============================================================
+
+\subsection{Deviations from the formal CMDP}
+\label{sec:deviations_table}
 
 Although the implementation follows the CMDP formulation of
 Chapter~\ref{chap:problem} closely, several practical simplifications
