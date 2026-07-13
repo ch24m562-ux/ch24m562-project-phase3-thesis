@@ -47,10 +47,11 @@ deployable policy and is not counted among the competing baselines.
 
 \begin{table}[htb]
 \centering
+\small
 \caption{Primary comparison: mean EENS (kWh) by policy and delivery
 scenario, aggregated over 10 sites $\times$ 10 seeds. Lower is better.}
 \label{tab:primary_comparison}
-\begin{tabular}{lrrrr}
+\begin{tabular}{p{5.2cm}rrrr}
 \toprule
 Policy & Normal & Delayed & Monsoon & Extreme \\
 \midrule
@@ -95,7 +96,56 @@ This reliability advantage is not obtained through disproportionate
 diesel consumption: aggregated across all sites and scenarios, RLInv
 consumes 205.7\,kWh of diesel versus B1's 198.5\,kWh (approximately
 3.6\% more), a modest increase consistent with a genuine operational
-trade-off rather than an inflated or unfair comparison.
+trade-off rather than an inflated or unfair comparison. This pattern
+holds scenario-by-scenario, not only in aggregate, and is accompanied by
+a consistently larger inventory buffer that helps explain \emph{why}
+RLInv avoids energy shortages (Table~\ref{tab:secondary_metrics}). No
+policy exhausted its diesel tank during evaluation under any scenario
+shown.
+
+\begin{table}[htb]
+\centering
+\small
+\caption{Secondary operational metrics by policy and scenario, aggregated
+over 10 sites $\times$ 10 seeds.}
+\label{tab:secondary_metrics}
+\begin{tabular}{llrrrrr}
+\toprule
+\textbf{Policy} & \textbf{Scenario} & \textbf{EENS} & \textbf{Diesel} &
+\textbf{Orders} & \textbf{Mean inv.} & \textbf{Min inv.} \\
+ & & (kWh) & (kWh) & /episode & (\%) & (\%) \\
+\midrule
+RLInv  & Normal  & 0.02   & 222.9 & 2.16 & 78.8 & 52.4 \\
+RLInv  & Monsoon & 11.29  & 211.6 & 1.97 & 68.1 & 45.4 \\
+RLInv  & Extreme & 53.85  & 169.1 & 1.34 & 53.1 & 37.3 \\
+\midrule
+B1     & Normal  & 3.55   & 219.4 & 0.63 & 54.0 & 36.6 \\
+B1     & Monsoon & 23.20  & 199.7 & 0.58 & 50.9 & 35.2 \\
+B1     & Extreme & 57.73  & 165.2 & 0.50 & 47.0 & 34.4 \\
+\midrule
+TrackB & Normal  & 1.28   & 221.7 & 1.13 & 53.2 & 39.0 \\
+TrackB & Monsoon & 174.50 & 48.4  & 0.90 & 74.3 & 55.8 \\
+TrackB & Extreme & 152.13 & 70.8  & 0.79 & 61.8 & 50.6 \\
+\midrule
+A6     & Normal  & 1.28   & 221.7 & 1.13 & 53.2 & 39.0 \\
+A6     & Monsoon & 10.65  & 212.3 & 3.79 & 75.0 & 47.1 \\
+A6     & Extreme & 61.50  & 161.4 & 0.69 & 46.2 & 34.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+RLInv's ordering frequency and inventory buffer both decline
+monotonically as logistics stress increases (orders: 2.16 $\to$ 1.34;
+mean inventory: 78.8\% $\to$ 53.1\%, Normal to Extreme), consistent with
+proactive replenishment rather than reactive over-ordering under stress.
+TrackB's low diesel consumption under Monsoon and Extreme (48.4 and
+70.8\,kWh) should not be read as efficiency: its relatively high
+inventory in these scenarios reflects fuel sitting unused rather than
+converted into served energy, consistent with the under-dispatch already
+identified above. TrackB and A6 report identical values under Normal
+because both share the same $(s,S)$ ordering rule and the dispatch
+policy --- their one point of difference --- has little effect when
+logistics are unstressed; the two diverge sharply once stress increases.
 
 Notably, the TrackB comparison shows that replacing rule-based dispatch with \emph{learned} dispatch
 while keeping classical $(s,S)$ ordering does not
@@ -686,7 +736,7 @@ rather than deferred as future work.
 \section{Summary}
 \label{sec:results_summary}
 % ============================================================
-
+\begin{sloppypar}
 RLInv achieves the lowest mean EENS under Normal and Extreme logistics,
 is statistically indistinguishable from the closest comparator under
 Delayed, and is nominally outperformed by the classical-ordering
@@ -704,3 +754,4 @@ Reward, tank-capacity, and delivery-distribution analyses further
 clarify the conditions under which RLInv's advantage persists, while
 the stochastic-grid experiment and RLInv-DA extension identify
 limitations rather than universal improvements.
+\end{sloppypar}
