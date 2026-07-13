@@ -82,12 +82,12 @@ monsoon conditions: mean paired differences of 3.15, 9.67, and
 11.91\,kWh respectively, with 95\% confidence intervals excluding zero
 in all three cases. Under extreme conditions the paired difference is
 directionally consistent but the interval spans zero (3.60\,kWh, 95\%
-CI $[-0.18, 7.38]$). This gap does not shrink under increasing
-logistics stress relative to a policy with perfect future information
---- it is largest under monsoon conditions --- indicating that RLInv's
+CI $[-0.18, 7.38]$). This gap is largest under
+Monsoon but narrows again under Extreme, where physical fuel
+availability increasingly constrains all policies --- indicating that RLInv's
 benefit cannot be explained solely by improved forecasting or dispatch
-optimisation, since Oracle-MPC already has access to perfect future
-information for both of those.
+optimisation, since Oracle-MPC already has access to realised future
+load, solar generation, and grid availability for dispatch planning.
 
 This reliability advantage is not obtained through disproportionate
 diesel consumption: aggregated across all sites and scenarios, RLInv
