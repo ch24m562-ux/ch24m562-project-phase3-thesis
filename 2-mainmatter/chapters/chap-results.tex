@@ -96,12 +96,10 @@ This reliability advantage is not obtained through disproportionate
 diesel consumption: aggregated across all sites and scenarios, RLInv
 consumes 205.7\,kWh of diesel versus B1's 198.5\,kWh (approximately
 3.6\% more), a modest increase consistent with a genuine operational
-trade-off rather than an inflated or unfair comparison. This pattern
-holds scenario-by-scenario, not only in aggregate, and is accompanied by
-a consistently larger inventory buffer that helps explain \emph{why}
-RLInv avoids energy shortages (Table~\ref{tab:secondary_metrics}). No
-policy exhausted its diesel tank during evaluation under any scenario
-shown.
+trade-off rather than an inflated or unfair comparison.
+Table~\ref{tab:secondary_metrics} shows that this modest increase is
+accompanied by a consistently larger inventory buffer and more proactive
+replenishment behaviour.
 
 \begin{table}[htb]
 \centering
@@ -112,8 +110,8 @@ over 10 sites $\times$ 10 seeds.}
 \begin{tabular}{llrrrrr}
 \toprule
 \textbf{Policy} & \textbf{Scenario} & \textbf{EENS} & \textbf{Diesel} &
-\textbf{Orders} & \textbf{Mean inv.} & \textbf{Min inv.} \\
- & & (kWh) & (kWh) & /episode & (\%) & (\%) \\
+\textbf{Completed} & \textbf{Mean} & \textbf{Minimum} \\
+ & & (kWh) & (kWh) & \textbf{orders/episode} & \textbf{inventory (\%)} & \textbf{inventory (\%)} \\
 \midrule
 RLInv  & Normal  & 0.02   & 222.9 & 2.16 & 78.8 & 52.4 \\
 RLInv  & Monsoon & 11.29  & 211.6 & 1.97 & 68.1 & 45.4 \\
@@ -138,14 +136,12 @@ RLInv's ordering frequency and inventory buffer both decline
 monotonically as logistics stress increases (orders: 2.16 $\to$ 1.34;
 mean inventory: 78.8\% $\to$ 53.1\%, Normal to Extreme), consistent with
 proactive replenishment rather than reactive over-ordering under stress.
-TrackB's low diesel consumption under Monsoon and Extreme (48.4 and
-70.8\,kWh) should not be read as efficiency: its relatively high
-inventory in these scenarios reflects fuel sitting unused rather than
-converted into served energy, consistent with the under-dispatch already
-identified above. TrackB and A6 report identical values under Normal
-because both share the same $(s,S)$ ordering rule and the dispatch
-policy --- their one point of difference --- has little effect when
-logistics are unstressed; the two diverge sharply once stress increases.
+TrackB's low diesel consumption under Monsoon and Extreme should not be
+interpreted as greater efficiency; instead, poor dispatch leaves more
+fuel unused while EENS increases substantially. Under Normal logistics,
+TrackB and A6 produce nearly identical outcomes because both share the
+same calibrated $(s,S)$ replenishment policy and dispatch decisions have
+little influence under low-stress conditions.
 
 Notably, the TrackB comparison shows that replacing rule-based dispatch with \emph{learned} dispatch
 while keeping classical $(s,S)$ ordering does not
