@@ -10,6 +10,7 @@
 
 \begin{figure}[htbp]
 \centering
+\resizebox{!}{0.78\textheight}{%
 \begin{tikzpicture}[
     node distance = 5mm and 0mm,
     % Box styles
@@ -112,8 +113,8 @@
 \draw[arr] (eval)        -- (evidence);
 \draw[arr] (evidence)    -- (conclusion);
 
-\end{tikzpicture}
-
+\end{tikzpicture}%
+}
 \caption{Research design rationale for the RLInv-DA exploratory extension
 (Reviewer Comments~\#9 and~\#10). The diagram shows the reasoning chain
 from reviewer feedback through experimental design to conclusion. The

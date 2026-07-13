@@ -29,7 +29,7 @@ policy using uncalibrated thresholds (B0), and a classical $(s,S)$ inventory pol
 rule-based dispatch (B1). One is optimisation-based: a rolling-horizon
 Model Predictive Control baseline (MPC) that addresses the standing
 question of whether classical optimisation is sufficient once its
-required forecasts are supplied. The fourth pairs the same classical
+required forecasts are supplied. The fourth (TrackB) pairs the same classical
 $(s,S)$ ordering rule with a \emph{learned} (reinforcement-learning)
 dispatch policy, and is included to isolate a distinct question from
 the other three: whether reinforcement learning \emph{alone}, applied
@@ -55,7 +55,7 @@ Policy & Normal & Delayed & Monsoon & Extreme \\
 B0 (threshold rule) & 9.94 & 24.53 & 35.52 & 66.63 \\
 B1 ($(s,S)$ + rule dispatch) & 3.55 & 13.43 & 23.20 & 57.73 \\
 MPC ($H{=}24$, persistence) & 3.08 & 13.14 & 22.84 & 57.38 \\
-$(s,S)$ + learned dispatch (RL alone) & 1.28 & 3.65 & 174.50 & 152.13 \\
+TrackB ($(s,S)$ + learned dispatch) & 1.28 & 3.65 & 174.50 & 152.13 \\
 \midrule
 \textit{Oracle-MPC (perfect forecast, reference only)} & \textit{3.17} & \textit{13.26} & \textit{23.20} & \textit{57.45} \\
 \midrule
