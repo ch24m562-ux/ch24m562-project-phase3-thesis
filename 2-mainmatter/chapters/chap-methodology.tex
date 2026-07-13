@@ -115,14 +115,16 @@ used in this work.
 Penalty-based constraint handling adds infeasibility costs to the reward.
 A finite penalty cannot guarantee zero hard violations: if the coefficient
 is poorly calibrated the policy still explores infeasible actions, and a
-diesel stockout or battery deep-discharge causes
-immediate operational constraint violations or loss of service. \texttt{MaskablePPO} from \texttt{sb3-contrib} instead sets
-infeasible action logits to $-\infty$ before the softmax, making the
-probability of any infeasible action exactly zero by construction. This
+diesel stockout or battery deep-discharge causes an operational constraint
+violation or loss of service. \texttt{MaskablePPO} from \texttt{sb3-contrib}
+instead sets infeasible action logits to $-\infty$ before the softmax, making
+the probability of any infeasible action exactly zero by construction. This
 converts the constraint set $\mathcal{C}(s_t)$ into a hard structural
-property of the policy distribution and avoids relying on penalty tuning
-alone for hard feasibility constraints; a violation-backstop coefficient
-($\mu$) is still retained (Section~\ref{sec:reward_design}).
+property of the policy distribution rather than something the policy must
+learn to avoid; a violation-backstop coefficient ($\mu$) is still retained
+(Section~\ref{sec:reward_design}) as a secondary safeguard. Ablation~A7
+trains an otherwise identical agent without action masking, giving a direct
+empirical test of this claim (Chapter~\ref{chap:results}).
 
 \subsection{Why a unified agent (RLInv) alongside decomposed control?}
 
@@ -131,9 +133,12 @@ ordering and energy dispatch. This ignores the bidirectional coupling: the
 dispatch controller depletes inventory, while inventory level constrains
 which dispatch actions are feasible. A unified agent can in principle
 exploit this coupling by jointly optimising both decisions from a single
-reward signal. Whether that benefit justifies the added learning
-complexity is the central empirical question (Hypothesis~H1, tested via
-the comparator policies of Section~\ref{sec:comparison_policies}). All
+reward signal. Whether that benefit justifies the added learning complexity
+is the central empirical question (Hypothesis~H1). Two decomposed
+comparators test this: TrackB, where a calibrated $(s,S)$ rule handles
+ordering and a separately trained PPO agent handles dispatch; and A6, a
+cleaner variant that holds the dispatch architecture fixed and substitutes
+only the ordering mechanism (Section~\ref{sec:comparison_policies}). All
 architectures are trained and evaluated under identical conditions;
 neither outcome is assumed in advance.
 
@@ -623,12 +628,11 @@ Chapter~\ref{chap:results} for this reason.
 each answers, and the classical $(s,S)$ ordering rule shared across four
 of the six comparators.}
 \label{tab:ablation-design}
-
 \begin{tabularx}{\textwidth}{
-    >{\raggedright\arraybackslash}p{1.45cm}
+    >{\raggedright\arraybackslash}p{1.4cm}
+    >{\raggedright\arraybackslash}p{2.15cm}
     >{\raggedright\arraybackslash}p{2.25cm}
-    >{\raggedright\arraybackslash}p{2.35cm}
-    >{\raggedright\arraybackslash}p{1.65cm}
+    >{\raggedright\arraybackslash}p{2.0cm}
     >{\raggedright\arraybackslash}X
 }
 \toprule
@@ -638,61 +642,51 @@ of the six comparators.}
 \textbf{Forecast} &
 \textbf{Primary question} \\
 \midrule
-
 B0 &
 Fixed threshold (uncalibrated) &
 Threshold rule &
 --- &
 Baseline anchor \\
-
 B1 &
 $(s,S)$ rule &
 Threshold rule &
 --- &
 Value of intelligent ordering \\
-
 MPC &
 $(s,S)$ rule &
 MILP, $H{=}24$ &
 Persistence &
 Does optimal-but-myopic dispatch close the gap? \\
-
 Oracle-MPC &
 $(s,S)$ rule &
 MILP, $H{=}360$ &
 Perfect &
 Optimistic reference with perfect future load, PV, and grid availability \\
-
 TrackB &
 $(s,S)$ rule &
 Learned (PPO) &
 --- &
 Joint vs.\ decomposed (H1, confounded) \\
-
 A6 &
 $(s,S)$ rule &
 Learned (PPO, Discrete(2)) &
 --- &
 Joint vs.\ decomposed (H1, cleaner) \\
-
 A7 &
 Learned (joint) &
 Learned (PPO, no mask) &
 --- &
 Action masking (H2) \\
-
 A5 &
 Learned (joint, no inv.\ obs.) &
 Learned (PPO) &
 --- &
 Inventory observability (H3) \\
-
 RLInv &
 Learned (joint) &
 Learned (PPO) &
 --- &
 Proposed system \\
-
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -754,7 +748,7 @@ glance.
 \small
 \caption{Experimental protocol at a glance.}
 \label{tab:protocol_summary}
-\begin{tabular}{ll}
+\begin{tabular}{lp{10.5cm}}
 \toprule
 \textbf{Item} & \textbf{Value} \\
 \midrule

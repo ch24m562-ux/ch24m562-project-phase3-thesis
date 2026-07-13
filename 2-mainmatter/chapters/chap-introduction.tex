@@ -286,50 +286,80 @@ Limitations arising from these choices include:
 
 These aspects are identified as promising directions for future work.
 % ============================================================
-\section{Thesis Roadmap and Relation Between Chapters}
+\section{Thesis Roadmap and Organisation}
 % ============================================================
 
-To make the logical flow of the thesis explicit,
-Fig.~\ref{fig:thesis-roadmap} summarises how the chapters relate to
-one another and highlights where the core technical contributions arise. The
-thesis progresses from motivation and gap identification, through formal
-problem definition and implementation, to empirical evaluation and
-conclusions. The main contribution lies in connecting three elements
-that are typically treated separately in prior literature:
-(i)~telecom tower hybrid-energy dispatch,
-(ii)~diesel inventory and replenishment uncertainty, and
-(iii)~constrained reinforcement learning for joint operational control.
-Chapter~3 formulates the problem, Chapter~4 presents the proposed method,
-and Chapter~7 reports the empirical evidence; Chapters~3--7 together form
-the core technical workflow of the thesis.
+The thesis progresses from motivation and research-gap identification,
+through formal problem formulation and methodological development, to
+empirical evaluation and conclusions. Its principal contribution lies
+in connecting three elements that are often treated separately in the
+literature: telecom tower hybrid-energy dispatch, diesel inventory and
+replenishment uncertainty, and constrained reinforcement learning for
+joint operational control.
 
-\vspace{4mm}
-\begin{figure}[H]
+This connection is established in Chapter~3 through the CMDP
+formulation, realised in Chapter~4 through the proposed method, and
+evaluated in Chapter~7 through the results, ablations, and robustness
+analyses. The remaining chapters provide the literature foundation,
+data analysis, experimental execution, and concluding discussion that
+support this technical workflow. Figure~\ref{fig:thesis-roadmap}
+summarises the organisation of the thesis and the principal
+cross-chapter dependencies.
+
+\begin{figure}[!htbp]
 \centering
-\resizebox{0.82\textwidth}{!}{%
+\resizebox{0.78\textwidth}{!}{%
 \begin{tikzpicture}[
-    node distance=0.4cm and 1.6cm,
-    every node/.style={font=\small, align=center},
+    node distance=0.24cm,
+    every node/.style={
+        font=\footnotesize,
+        align=center
+    },
     box/.style={
-        draw, rounded corners, rectangle,
-        minimum width=3.4cm, minimum height=1.05cm
+        draw,
+        rounded corners,
+        rectangle,
+        minimum width=3.25cm,
+        minimum height=0.78cm,
+        inner sep=3pt
     },
     novel/.style={
-        draw, rounded corners, rectangle,
-        minimum width=3.4cm, minimum height=1.05cm,
-        fill=gray!15, thick
+        draw,
+        rounded corners,
+        rectangle,
+        minimum width=3.25cm,
+        minimum height=0.78cm,
+        inner sep=3pt,
+        fill=gray!15,
+        thick
     },
     arrow/.style={->, thick},
     xarrow/.style={->, thick, dashed}
 ]
-\node[box]   (c1) {Chapter 1\\Motivation, scope,\\research objectives};
-\node[box,   below=of c1] (c2) {Chapter 2\\Literature review\\and research gap};
-\node[novel, below=of c2] (c3) {\textbf{Chapter 3}\\CMDP: joint dispatch\\+ inventory formulation};
-\node[novel, below=of c3] (c4) {\textbf{Chapter 4}\\Methodology: TelecomEnv,\\RLInv, MaskablePPO};
-\node[box,   below=of c4] (c5) {Chapter 5\\Dataset, EDA, site\\difficulty classification};
-\node[box,   below=of c5] (c6) {Chapter 6\\Experimental execution\\and training runs};
-\node[novel, below=of c6] (c7) {\textbf{Chapter 7}\\Results, ablations,\\robustness analysis};
-\node[box,   below=of c7] (c8) {Chapter 8\\Conclusion, limitations,\\future work};
+
+\node[box] (c1)
+    {Chapter 1\\Motivation, scope, and objectives};
+
+\node[box, below=of c1] (c2)
+    {Chapter 2\\Literature review and research gap};
+
+\node[novel, below=of c2] (c3)
+    {\textbf{Chapter 3}\\CMDP: joint dispatch + inventory formulation};
+
+\node[novel, below=of c3] (c4)
+    {\textbf{Chapter 4}\\TelecomEnv, RLInv, and MaskablePPO};
+
+\node[box, below=of c4] (c5)
+    {Chapter 5\\Dataset, EDA, and site difficulty classification};
+
+\node[box, below=of c5] (c6)
+    {Chapter 6\\Experimental execution and training};
+
+\node[novel, below=of c6] (c7)
+    {\textbf{Chapter 7}\\Results, ablations, and robustness};
+
+\node[box, below=of c7] (c8)
+    {Chapter 8\\Conclusions, limitations, and future work};
 
 \draw[arrow] (c1) -- (c2);
 \draw[arrow] (c2) -- (c3);
@@ -339,59 +369,29 @@ the core technical workflow of the thesis.
 \draw[arrow] (c6) -- (c7);
 \draw[arrow] (c7) -- (c8);
 
-\draw[xarrow] (c3.east) to[out=0, in=0, looseness=1.4]
-    node[right, font=\footnotesize] {CMDP defines\\eval metrics}
+\draw[xarrow]
+    (c3.east)
+    to[out=0, in=0, looseness=1.25]
+    node[right, font=\scriptsize]
+    {CMDP defines\\eval metrics}
     (c7.east);
-\draw[xarrow] (c5.east) to[out=0, in=0, looseness=0.9]
-    node[right, font=\footnotesize] {ITU data\\grounds results}
+
+\draw[xarrow]
+    (c5.east)
+    to[out=0, in=0, looseness=0.8]
+    node[right, font=\scriptsize]
+    {ITU data grounds\\the evaluation}
     (c7.east);
+
 \end{tikzpicture}%
 }
-\caption{Thesis roadmap. Shaded boxes (Chapters~3, 4, and~7) mark the
-formulation, proposed method, and empirical evidence that together form
-the core technical contribution; Chapters~3--7 as a whole constitute the
-core technical workflow. Dashed arrows indicate cross-chapter
-dependencies. The vertical spine shows the sequential reading order.}
+\caption{Thesis roadmap. Shaded boxes identify the formulation, proposed
+method, and empirical evaluation that form the principal technical
+contribution. Dashed arrows indicate important cross-chapter
+dependencies, while the vertical sequence shows the reading order.}
 \label{fig:thesis-roadmap}
 \end{figure}
+
 \FloatBarrier
-
-% ============================================================
-\section{Thesis Organisation}
-% ============================================================
-
-Following the roadmap shown in Fig.~\ref{fig:thesis-roadmap}, the
-remainder of this thesis elaborates each stage of the research workflow
-in detail:
-
-\begin{itemize}
-  \item \textbf{Chapter~\ref{chap:literature}} reviews telecom, microgrid,
-  and inventory-theoretic literature to identify the gap that motivates
-  this work.
-
-  \item \textbf{Chapter~\ref{chap:problem}} formulates the hybrid telecom
-  tower system as a constrained Markov decision process, including the
-  state and action spaces, cost function, and operational constraints.
-
-  \item \textbf{Chapter~\ref{chap:methodology}} presents the implemented
-  solution: the \texttt{TelecomEnv} simulator, the \texttt{MaskablePPO}
-  agent, the full comparison-policy set, and the evaluation protocol.
-
-  \item \textbf{Chapter~\ref{chap:datasets-setup}} documents the ITU/Zindi
-  dataset and the exploratory analysis that informed simulator design and
-  site selection.
-
-  \item \textbf{Chapter~\ref{chap:experimental-execution}} records how the
-  experimental plan was executed, from training runs through convergence
-  monitoring to the evaluation campaign.
-
-  \item \textbf{Chapter~\ref{chap:results}} presents and interprets the
-  full experimental results, including the primary comparison, the H1--H3
-  ablations, and the robustness checks.
-
-  \item \textbf{Chapter~\ref{chap:conclusion}} discusses what the results
-  mean, summarises the contributions and limitations, and outlines
-  directions for future work.
-\end{itemize}
 
 \clearpage
