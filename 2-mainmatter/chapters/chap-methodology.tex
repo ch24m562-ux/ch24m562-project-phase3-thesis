@@ -378,7 +378,7 @@ Table~\ref{tab:hyperparams} lists all training hyperparameters.
 \small
 \caption{Training hyperparameters for RLInv and the TrackB dispatch agent.}
 \label{tab:hyperparams}
-\begin{tabular}{p{3.8cm}p{4.2cm}p{5.0cm}}
+\begin{tabular}{p{3.8cm}p{4.8cm}p{4.4cm}}
 \toprule
 \textbf{Parameter} & \textbf{Value} & \textbf{Rationale} \\
 \midrule
@@ -715,6 +715,7 @@ paired statistical analysis is applied.
 
 \begin{figure}[htbp]
 \centering
+\resizebox{0.85\textwidth}{!}{%
 \begin{tikzpicture}[
   node distance=1.2cm,
   box/.style={draw, rounded corners, align=center,
@@ -731,7 +732,8 @@ paired statistical analysis is applied.
 \draw[->] (evaluate)   -- (ablations);
 \draw[->] (ablations)  -- (sensitivity);
 \draw[->] (sensitivity)-- (statistics);
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption{Overall evaluation protocol, from training through to the
 paired statistical analysis reported in Chapter~\ref{chap:results}.}
 \label{fig:eval_flow}

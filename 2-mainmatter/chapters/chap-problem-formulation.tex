@@ -243,7 +243,7 @@ each component, a distinction the panel raised explicitly in Phase-I review.
 \begin{table}[ht]
 \centering
 \small
-\begin{tabular}{lll}
+\begin{tabular}{p{2.1cm}p{3.1cm}p{9cm}}
 \toprule
 \textbf{Variable} & \textbf{Source} & \textbf{Notes} \\
 \midrule
@@ -252,7 +252,7 @@ $P_t^{\Load}$ & ITU/Zindi dataset  & Direct column \\
 $G_t$         & ITU/Zindi dataset  & Direct column \\
 $\SoC_t$      & Simulator state    & Evolved via Eq.~\eqref{eq:soc} from real initial values \\
 $\Inv_t$      & Simulator state    & Derived from ITU fuel-level column and tank capacity \\
-$\Pipe_t$     & Synthetic          & Log-normal lead-time overlay; sole synthetic component \\
+$\Pipe_t$     & Synthetic          & Geometric lead-time process (Section~\ref{sec:dynamics}); sole synthetic component \\
 $\hour_t$     & Derived            & Computed from ITU timestamp \\
 $\tau_t$      & Simulator state    & Counter reset on each new order; always active \\
 $R_t$         & Synthetic (inactive) & Present in the observation vector but fixed at zero for
@@ -518,16 +518,19 @@ action masking improves dispatch-policy robustness under stressed logistics when
 replenishment is externally managed, while providing little measurable
 benefit when replenishment is learned jointly.
 
-\textbf{H3 (Inventory-state hypothesis).} Including explicit diesel inventory
-state in the observation improves ordering decisions, relative to an ablated
-agent in which the inventory- and delivery-related observation channels are
+\textbf{H3 (Logistics-observation hypothesis).} Retaining the five
+inventory- and delivery-related observation channels improves ordering
+decisions, relative to an ablated
+agent in which those observation channels are
 removed from the observation vector.
 
 These hypotheses are stated here, at the level of the problem formulation,
 because they directly shape the choice of state space, action space, and
 ablation variants. The formulation above is intentionally designed so that
 the role of inventory state, safety constraints, and joint optimisation can
-each be isolated and empirically tested through the comparisons defined above.
+each be empirically tested through the comparisons defined above, with
+any remaining confounds between ordering and dispatch design stated
+explicitly where they occur.
 Results for all three hypotheses are reported in Chapter~\ref{chap:results},
 and conclusions are drawn in Chapter~\ref{chap:conclusion} regardless of the
 direction of the findings.
